@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-start "" "..\whisper-writer\venv311\Scripts\pythonw.exe" voice_typer.py
+start "" "C:\Users\tucke\whisper-writer\venv311\Scripts\pythonw.exe" "%~dp0voice_typer.py"
