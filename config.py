@@ -15,11 +15,15 @@ DEFAULTS = {
         "shift": True,
         "alt": False,
         "key": "space"
-    }
+    },
+    "recording_mode": "push_to_talk",  # "push_to_talk" or "auto_stop"
+    "silence_duration_sec": 2.0,
+    "audio_feedback": True
 }
 
 MODEL_OPTIONS = ["tiny.en", "base.en", "small.en", "medium.en"]
 LANGUAGE_OPTIONS = ["en", "auto"]
+RECORDING_MODE_OPTIONS = ["push_to_talk", "auto_stop"]
 
 
 def get_config_path():

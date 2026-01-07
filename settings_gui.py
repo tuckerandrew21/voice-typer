@@ -2,7 +2,7 @@
 Settings GUI for Voice Typer using tkinter.
 """
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import config
 
 
@@ -89,13 +89,13 @@ class SettingsWindow:
 
         self.window = tk.Tk()
         self.window.title("Voice Typer Settings")
-        self.window.geometry("400x300")
+        self.window.geometry("400x420")
         self.window.resizable(False, False)
 
         # Center on screen
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() - 400) // 2
-        y = (self.window.winfo_screenheight() - 300) // 2
+        y = (self.window.winfo_screenheight() - 420) // 2
         self.window.geometry(f"+{x}+{y}")
 
         # Main frame with padding
@@ -134,8 +134,44 @@ class SettingsWindow:
         # Hotkey
         row += 1
         ttk.Label(main_frame, text="Hotkey:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.hotkey_capture = HotkeyCapture(main_frame, self.config["hotkey"])
-        self.hotkey_capture.frame.grid(row=row, column=1, sticky=tk.W, pady=5)
+        hotkey_frame = ttk.Frame(main_frame)
+        hotkey_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
+        self.hotkey_capture = HotkeyCapture(hotkey_frame, self.config["hotkey"])
+        self.hotkey_capture.frame.pack(side=tk.LEFT)
+        ttk.Button(hotkey_frame, text="?", width=2, command=self.show_hotkey_help).pack(side=tk.LEFT, padx=5)
+
+        # Recording Mode
+        row += 1
+        ttk.Label(main_frame, text="Recording Mode:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.mode_var = tk.StringVar(value=self.config.get("recording_mode", "push_to_talk"))
+        mode_combo = ttk.Combobox(main_frame, textvariable=self.mode_var,
+                                  values=config.RECORDING_MODE_OPTIONS, state="readonly", width=15)
+        mode_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
+        mode_combo.bind("<<ComboboxSelected>>", self.on_mode_change)
+
+        # Mode hint
+        row += 1
+        self.mode_hint = ttk.Label(main_frame, text=self.get_mode_hint(),
+                                   font=("", 8), foreground="gray", wraplength=250)
+        self.mode_hint.grid(row=row, column=0, columnspan=2, sticky=tk.W)
+
+        # Silence timeout (only visible in auto_stop mode)
+        row += 1
+        self.silence_frame = ttk.Frame(main_frame)
+        self.silence_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+        ttk.Label(self.silence_frame, text="Silence Timeout:").pack(side=tk.LEFT)
+        self.silence_var = tk.StringVar(value=str(self.config.get("silence_duration_sec", 2.0)))
+        silence_entry = ttk.Entry(self.silence_frame, textvariable=self.silence_var, width=5)
+        silence_entry.pack(side=tk.LEFT, padx=5)
+        ttk.Label(self.silence_frame, text="seconds").pack(side=tk.LEFT)
+        self.update_silence_visibility()
+
+        # Audio feedback checkbox
+        row += 1
+        self.feedback_var = tk.BooleanVar(value=self.config.get("audio_feedback", True))
+        feedback_check = ttk.Checkbutton(main_frame, text="Audio feedback (click sounds)",
+                                         variable=self.feedback_var)
+        feedback_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # Buttons frame
         row += 1
@@ -150,6 +186,47 @@ class SettingsWindow:
 
         self.window.mainloop()
 
+    def show_hotkey_help(self):
+        """Show hotkey suggestions dialog."""
+        help_text = """Recommended Hotkeys:
+
+SINGLE KEYS (easiest):
+• Scroll Lock - never used by anything
+• Pause/Break - never used
+• Insert - rarely used
+
+NUMPAD (if you have one):
+• Numpad + - easy to reach
+• Numpad 0 - large key
+
+TWO-KEY COMBOS (if needed):
+• Ctrl+\\ - rarely conflicts
+• Ctrl+; - rarely conflicts
+
+Tip: Scroll Lock is the cleanest option
+if your keyboard has it."""
+        messagebox.showinfo("Hotkey Suggestions", help_text)
+
+    def get_mode_hint(self):
+        """Return description text for current recording mode."""
+        mode = self.mode_var.get()
+        if mode == "push_to_talk":
+            return "Hold hotkey to record, release to transcribe"
+        else:
+            return "Press hotkey to start, auto-stops after silence"
+
+    def on_mode_change(self, event=None):
+        """Update UI when recording mode changes."""
+        self.mode_hint.config(text=self.get_mode_hint())
+        self.update_silence_visibility()
+
+    def update_silence_visibility(self):
+        """Show/hide silence settings based on mode."""
+        if self.mode_var.get() == "auto_stop":
+            self.silence_frame.grid()
+        else:
+            self.silence_frame.grid_remove()
+
     def save(self):
         """Save settings and close."""
         try:
@@ -157,11 +234,20 @@ class SettingsWindow:
         except ValueError:
             sample_rate = 16000
 
+        try:
+            silence_duration = float(self.silence_var.get())
+            silence_duration = max(0.5, min(10.0, silence_duration))  # Clamp to reasonable range
+        except ValueError:
+            silence_duration = 2.0
+
         new_config = {
             "model_size": self.model_var.get(),
             "language": self.lang_var.get(),
             "sample_rate": sample_rate,
-            "hotkey": self.hotkey_capture.get_hotkey()
+            "hotkey": self.hotkey_capture.get_hotkey(),
+            "recording_mode": self.mode_var.get(),
+            "silence_duration_sec": silence_duration,
+            "audio_feedback": self.feedback_var.get()
         }
 
         config.save_config(new_config)

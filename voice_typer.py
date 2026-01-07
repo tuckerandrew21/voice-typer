@@ -5,11 +5,14 @@ import sys
 import os
 import threading
 import time
+import io
+import wave
+import winsound
 import numpy as np
 import sounddevice as sd
 from pynput import keyboard
 from pynput.keyboard import Controller, Key
-from PIL import Image
+from PIL import Image, ImageDraw
 import pystray
 import config
 
@@ -25,6 +28,88 @@ audio_data = []
 stream = None
 tray_icon = None
 key_listener = None
+
+# Audio feedback sounds
+start_sound = None
+stop_sound = None
+
+# Silence detection state
+silence_start_time = None
+
+# Status icons
+icon_ready = None
+icon_recording = None
+
+
+def generate_click_sound(frequency=800, duration_ms=50, volume=0.3):
+    """Generate a simple click sound as WAV bytes."""
+    sample_rate = 44100
+    num_samples = int(sample_rate * duration_ms / 1000)
+
+    # Generate sine wave
+    t = np.linspace(0, duration_ms / 1000, num_samples, dtype=np.float32)
+    wave_data = np.sin(2 * np.pi * frequency * t) * volume
+
+    # Apply fade envelope to avoid clicks
+    fade_samples = int(num_samples * 0.1)
+    if fade_samples > 0:
+        wave_data[:fade_samples] *= np.linspace(0, 1, fade_samples)
+        wave_data[-fade_samples:] *= np.linspace(1, 0, fade_samples)
+
+    # Convert to 16-bit PCM
+    pcm_data = (wave_data * 32767).astype(np.int16)
+
+    # Create WAV in memory
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data.tobytes())
+
+    return buffer.getvalue()
+
+
+def init_sounds():
+    """Initialize audio feedback sounds at startup."""
+    global start_sound, stop_sound
+    try:
+        start_sound = generate_click_sound(frequency=1000, duration_ms=50)
+        stop_sound = generate_click_sound(frequency=600, duration_ms=80)
+    except Exception as e:
+        print(f"Warning: Could not initialize sounds: {e}", flush=True)
+        start_sound = stop_sound = None
+
+
+def play_sound(sound_data):
+    """Play a sound asynchronously (non-blocking)."""
+    if not app_config.get("audio_feedback", True):
+        return
+    if sound_data:
+        threading.Thread(
+            target=lambda: winsound.PlaySound(sound_data, winsound.SND_MEMORY),
+            daemon=True
+        ).start()
+
+
+def generate_status_icon(color):
+    """Generate a simple colored circle icon."""
+    size = 64
+    image = Image.new('RGB', (size, size), color=color)
+    return image
+
+
+def init_icons():
+    """Initialize status icons."""
+    global icon_ready, icon_recording
+    icon_ready = generate_status_icon('#4CAF50')      # Green
+    icon_recording = generate_status_icon('#F44336')  # Red
+
+
+def update_tray_icon(recording=False):
+    """Update tray icon based on recording state."""
+    if tray_icon:
+        tray_icon.icon = icon_recording if recording else icon_ready
 
 
 def load_model(model_size=None):
@@ -51,32 +136,96 @@ def load_model(model_size=None):
         tray_icon.title = "Voice Typer - Ready"
 
 
+def calculate_rms(audio_chunk):
+    """Calculate RMS (root mean square) amplitude of audio chunk."""
+    if len(audio_chunk) == 0:
+        return 0
+    return np.sqrt(np.mean(audio_chunk ** 2))
+
+
+def rms_to_db(rms, reference=1.0):
+    """Convert RMS value to decibels."""
+    if rms <= 0:
+        return -100  # Effectively silent
+    return 20 * np.log10(rms / reference)
+
+
+def auto_stop_recording():
+    """Called when silence threshold is reached in auto-stop mode."""
+    global is_recording, silence_start_time
+
+    if not is_recording:
+        return
+
+    print(">> Auto-stopped (silence detected)", flush=True)
+    silence_start_time = None
+    stop_recording()
+
+
 def audio_callback(indata, frames, time_info, status):
-    global audio_data, is_recording
-    if is_recording:
-        audio_data.append(indata.copy())
+    global audio_data, is_recording, silence_start_time
+
+    if not is_recording:
+        return
+
+    audio_data.append(indata.copy())
+
+    # Only check silence in auto_stop mode
+    if app_config.get("recording_mode") != "auto_stop":
+        return
+
+    # Calculate current audio level
+    rms = calculate_rms(indata)
+    db = rms_to_db(rms)
+
+    threshold_db = -40  # dB threshold for silence
+    silence_duration = app_config.get("silence_duration_sec", 2.0)
+
+    current_time = time.time()
+
+    if db < threshold_db:
+        # Below threshold - silence detected
+        if silence_start_time is None:
+            silence_start_time = current_time
+        elif (current_time - silence_start_time) >= silence_duration:
+            # Silence duration exceeded - trigger stop via thread to avoid callback blocking
+            threading.Thread(target=auto_stop_recording, daemon=True).start()
+            silence_start_time = None  # Prevent re-triggering
+    else:
+        # Above threshold - reset silence timer
+        silence_start_time = None
 
 
 def start_recording():
-    global is_recording, audio_data, stream
+    global is_recording, audio_data, stream, silence_start_time
     if not model_ready:
         print("Model still loading, please wait...", flush=True)
         return
     if is_recording:
         return
+
+    play_sound(start_sound)
+    update_tray_icon(recording=True)
+
     print("\n>> Recording...", flush=True)
     is_recording = True
     audio_data = []
+    silence_start_time = None
     sample_rate = app_config.get("sample_rate", 16000)
     stream = sd.InputStream(samplerate=sample_rate, channels=1, dtype=np.float32, callback=audio_callback)
     stream.start()
 
 
 def stop_recording():
-    global is_recording, stream, audio_data
+    global is_recording, stream, audio_data, silence_start_time
     if not is_recording:
         return
     is_recording = False
+    silence_start_time = None
+
+    play_sound(stop_sound)
+    update_tray_icon(recording=False)
+
     if stream:
         stream.stop()
         stream.close()
@@ -148,15 +297,23 @@ def check_hotkey():
 def on_press(key):
     global current_keys
     current_keys.add(key)
-    if check_hotkey() and not is_recording:
-        start_recording()
+
+    if check_hotkey():
+        if is_recording:
+            # In auto_stop mode, pressing hotkey again stops recording (toggle)
+            if app_config.get("recording_mode") == "auto_stop":
+                threading.Thread(target=stop_recording, daemon=True).start()
+        else:
+            start_recording()
 
 
 def on_release(key):
     global current_keys
     current_keys.discard(key)
-    if is_recording:
-        threading.Thread(target=stop_recording).start()
+
+    # Only stop on release in push_to_talk mode
+    if is_recording and app_config.get("recording_mode") == "push_to_talk":
+        threading.Thread(target=stop_recording, daemon=True).start()
 
 
 # System tray
@@ -209,12 +366,6 @@ def get_status_text(item):
 
 
 def create_tray_icon():
-    icon_path = get_icon_path()
-    if os.path.exists(icon_path):
-        image = Image.open(icon_path)
-    else:
-        image = Image.new('RGB', (64, 64), color='#4a9eff')
-
     menu = pystray.Menu(
         pystray.MenuItem("Voice Typer", None, enabled=False),
         pystray.MenuItem(get_status_text, None, enabled=False),
@@ -223,7 +374,7 @@ def create_tray_icon():
         pystray.MenuItem("Exit", on_quit)
     )
 
-    icon = pystray.Icon("voice_typer", image, "Voice Typer - Loading...", menu)
+    icon = pystray.Icon("voice_typer", icon_ready, "Voice Typer - Loading...", menu)
     return icon
 
 
@@ -240,6 +391,12 @@ def main():
     # Load configuration
     app_config = config.load_config()
     hotkey_str = config.hotkey_to_string(app_config["hotkey"])
+
+    # Initialize audio feedback sounds
+    init_sounds()
+
+    # Initialize status icons
+    init_icons()
 
     # Start keyboard listener
     listener_thread = threading.Thread(target=run_keyboard_listener, daemon=True)
