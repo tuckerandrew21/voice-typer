@@ -24,8 +24,14 @@ DEFAULTS = {
     "recording_mode": "push_to_talk",  # "push_to_talk" or "auto_stop"
     "silence_duration_sec": 2.0,
     "audio_feedback": True,
-    "input_device": None  # None = system default, or device name string
+    "input_device": None,  # None = system default, or device name string
+    "auto_paste": True,  # Automatically paste after transcription
+    "start_with_windows": False  # Launch on Windows startup
 }
+
+# GitHub repo for updates (TODO: update with real URLs)
+GITHUB_REPO = "#"
+HELP_URL = "#"
 
 MODEL_OPTIONS = ["tiny.en", "base.en", "small.en", "medium.en"]
 LANGUAGE_OPTIONS = ["en", "auto"]
@@ -88,6 +94,9 @@ def get_input_devices():
     Returns list of (display_name, device_info) tuples.
     First item is always ("System Default (device name)", None).
     Only shows WASAPI devices (respects Windows enable/disable settings).
+
+    Note: Device list is cached by PortAudio. Changes to Windows defaults
+    won't be reflected until the app restarts.
     """
     # Get default device name
     default_label = "System Default"
@@ -184,3 +193,55 @@ def is_device_available(saved_device):
     if saved_device is None:
         return True  # System default is always "available"
     return get_device_index(saved_device) is not None
+
+
+def get_startup_enabled():
+    """Check if app is set to start with Windows."""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_READ
+        )
+        try:
+            winreg.QueryValueEx(key, APP_NAME)
+            return True
+        except FileNotFoundError:
+            return False
+        finally:
+            winreg.CloseKey(key)
+    except Exception:
+        return False
+
+
+def set_startup_enabled(enabled):
+    """Enable or disable starting with Windows."""
+    try:
+        import winreg
+        import sys
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_SET_VALUE
+        )
+        try:
+            if enabled:
+                # Get path to executable
+                if getattr(sys, 'frozen', False):
+                    # Running as compiled exe
+                    exe_path = sys.executable
+                else:
+                    # Running as script - use pythonw to avoid console
+                    exe_path = f'pythonw "{os.path.abspath("murmurtone.py")}"'
+                winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, exe_path)
+            else:
+                try:
+                    winreg.DeleteValue(key, APP_NAME)
+                except FileNotFoundError:
+                    pass  # Already not set
+        finally:
+            winreg.CloseKey(key)
+        return True
+    except Exception:
+        return False

@@ -275,9 +275,33 @@ def stop_recording():
     text = "".join(segment.text for segment in segments).strip()
 
     if text:
-        print(f">> Typing: {text}", flush=True)
-        time.sleep(0.1)
-        keyboard_controller.type(text + " ")
+        # Copy to clipboard
+        try:
+            import ctypes
+            # Open clipboard
+            ctypes.windll.user32.OpenClipboard(0)
+            ctypes.windll.user32.EmptyClipboard()
+            # Copy text (CF_UNICODETEXT = 13)
+            text_with_space = text + " "
+            hMem = ctypes.windll.kernel32.GlobalAlloc(0x0042, len(text_with_space) * 2 + 2)
+            pMem = ctypes.windll.kernel32.GlobalLock(hMem)
+            ctypes.cdll.msvcrt.wcscpy(ctypes.c_wchar_p(pMem), text_with_space)
+            ctypes.windll.kernel32.GlobalUnlock(hMem)
+            ctypes.windll.user32.SetClipboardData(13, hMem)
+            ctypes.windll.user32.CloseClipboard()
+        except Exception as e:
+            print(f">> Clipboard error: {e}", flush=True)
+
+        # Auto-paste if enabled
+        if app_config.get("auto_paste", True):
+            print(f">> Pasting: {text}", flush=True)
+            time.sleep(0.1)
+            keyboard_controller.press(Key.ctrl)
+            keyboard_controller.press('v')
+            keyboard_controller.release('v')
+            keyboard_controller.release(Key.ctrl)
+        else:
+            print(f">> Copied to clipboard: {text}", flush=True)
     else:
         print(">> No speech detected.", flush=True)
 

@@ -8,6 +8,37 @@ import sounddevice as sd
 import config
 
 
+class Tooltip:
+    """Hover tooltip for widgets."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip = None
+        widget.bind("<Enter>", self.show)
+        widget.bind("<Leave>", self.hide)
+
+    def show(self, event=None):
+        x, y, _, _ = self.widget.bbox("insert") if hasattr(self.widget, 'bbox') else (0, 0, 0, 0)
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+
+        self.tooltip = tk.Toplevel(self.widget)
+        self.tooltip.wm_overrideredirect(True)
+        self.tooltip.wm_geometry(f"+{x}+{y}")
+
+        frame = tk.Frame(self.tooltip, bg="#333333", bd=1, relief=tk.SOLID)
+        frame.pack()
+        label = tk.Label(frame, text=self.text, bg="#333333", fg="#ffffff",
+                        font=("", 9), justify=tk.LEFT, padx=8, pady=6)
+        label.pack()
+
+    def hide(self, event=None):
+        if self.tooltip:
+            self.tooltip.destroy()
+            self.tooltip = None
+
+
 class HotkeyCapture:
     """Widget to capture hotkey combinations."""
 
@@ -73,6 +104,11 @@ class HotkeyCapture:
     def get_hotkey(self):
         return self.hotkey
 
+    def set_hotkey(self, hotkey):
+        """Set hotkey from dict."""
+        self.hotkey = hotkey.copy()
+        self.label.config(text=config.hotkey_to_string(self.hotkey))
+
 
 class SettingsWindow:
     """Settings dialog window."""
@@ -95,13 +131,13 @@ class SettingsWindow:
 
         self.window = tk.Tk()
         self.window.title(f"{config.APP_NAME} Settings v{config.VERSION}")
-        self.window.geometry("500x520")
+        self.window.geometry("500x600")
         self.window.resizable(False, False)
 
         # Center on screen
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() - 500) // 2
-        y = (self.window.winfo_screenheight() - 520) // 2
+        y = (self.window.winfo_screenheight() - 600) // 2
         self.window.geometry(f"+{x}+{y}")
 
         # Main frame with padding
@@ -111,16 +147,19 @@ class SettingsWindow:
         # Model size
         row = 0
         ttk.Label(main_frame, text="Model Size:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        model_frame = ttk.Frame(main_frame)
+        model_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
         self.model_var = tk.StringVar(value=self.config["model_size"])
-        model_combo = ttk.Combobox(main_frame, textvariable=self.model_var,
+        model_combo = ttk.Combobox(model_frame, textvariable=self.model_var,
                                    values=config.MODEL_OPTIONS, state="readonly", width=15)
-        model_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
-
-        # Model size hint
-        row += 1
-        hint = ttk.Label(main_frame, text="(tiny=fast, medium=accurate)",
-                        font=("", 8), foreground="gray")
-        hint.grid(row=row, column=1, sticky=tk.W)
+        model_combo.pack(side=tk.LEFT)
+        model_help = ttk.Label(model_frame, text="?", font=("", 9, "bold"),
+                               foreground="#888888", cursor="question_arrow")
+        model_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(model_help, "tiny.en    - Fastest, basic accuracy\n"
+                           "base.en   - Fast, good accuracy\n"
+                           "small.en  - Balanced speed/accuracy\n"
+                           "medium.en - Slowest, best accuracy")
 
         # Language
         row += 1
@@ -146,7 +185,7 @@ class SettingsWindow:
 
         # Device hint
         row += 1
-        device_hint = ttk.Label(main_frame, text="(showing enabled devices only)",
+        device_hint = ttk.Label(main_frame, text="(showing enabled devices - restart app to detect new defaults)",
                                 font=("", 8), foreground="gray")
         device_hint.grid(row=row, column=1, sticky=tk.W)
 
@@ -176,7 +215,18 @@ class SettingsWindow:
         hotkey_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
         self.hotkey_capture = HotkeyCapture(hotkey_frame, self.config["hotkey"])
         self.hotkey_capture.frame.pack(side=tk.LEFT)
-        ttk.Button(hotkey_frame, text="?", width=2, command=self.show_hotkey_help).pack(side=tk.LEFT, padx=5)
+        hotkey_help = ttk.Label(hotkey_frame, text="?", font=("", 9, "bold"),
+                                foreground="#888888", cursor="question_arrow")
+        hotkey_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(hotkey_help, "Recommended Hotkeys:\n\n"
+                            "SINGLE KEYS (easiest):\n"
+                            "• Scroll Lock - never conflicts\n"
+                            "• Pause/Break - never used\n"
+                            "• Insert - rarely used\n\n"
+                            "NUMPAD (if available):\n"
+                            "• Numpad + or Numpad 0\n\n"
+                            "TWO-KEY COMBOS:\n"
+                            "• Ctrl+\\ or Ctrl+;")
 
         # Recording Mode
         row += 1
@@ -211,39 +261,56 @@ class SettingsWindow:
                                          variable=self.feedback_var)
         feedback_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
 
+        # Auto-paste checkbox
+        row += 1
+        self.autopaste_var = tk.BooleanVar(value=self.config.get("auto_paste", True))
+        autopaste_check = ttk.Checkbutton(main_frame, text="Auto-paste after transcription",
+                                          variable=self.autopaste_var)
+        autopaste_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        # Start with Windows checkbox
+        row += 1
+        self.startup_var = tk.BooleanVar(value=config.get_startup_enabled())
+        startup_check = ttk.Checkbutton(main_frame, text="Start with Windows",
+                                        variable=self.startup_var)
+        startup_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+
         # Buttons frame
         row += 1
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=row, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=row, column=0, columnspan=2, pady=15)
 
         ttk.Button(btn_frame, text="Save", command=self.save).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Cancel", command=self.close).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Reset to Defaults", command=self.reset_defaults).pack(side=tk.LEFT, padx=5)
+
+        # Separator
+        row += 1
+        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
+
+        # About section
+        row += 1
+        about_frame = ttk.Frame(main_frame)
+        about_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W)
+
+        version_label = ttk.Label(about_frame, text=f"{config.APP_NAME} v{config.VERSION}",
+                                  font=("", 9), foreground="gray")
+        version_label.pack(side=tk.LEFT)
+
+        help_link = ttk.Label(about_frame, text="Help", font=("", 9, "underline"),
+                              foreground="#4a9eff", cursor="hand2")
+        help_link.pack(side=tk.LEFT, padx=(15, 0))
+        help_link.bind("<Button-1>", lambda e: self.open_url(config.HELP_URL))
+
+        update_link = ttk.Label(about_frame, text="Check for Updates", font=("", 9, "underline"),
+                                foreground="#4a9eff", cursor="hand2")
+        update_link.pack(side=tk.LEFT, padx=(15, 0))
+        update_link.bind("<Button-1>", lambda e: self.open_url(config.GITHUB_REPO + "/releases"))
 
         # Handle window close
         self.window.protocol("WM_DELETE_WINDOW", self.close)
 
         self.window.mainloop()
-
-    def show_hotkey_help(self):
-        """Show hotkey suggestions dialog."""
-        help_text = """Recommended Hotkeys:
-
-SINGLE KEYS (easiest):
-• Scroll Lock - never used by anything
-• Pause/Break - never used
-• Insert - rarely used
-
-NUMPAD (if you have one):
-• Numpad + - easy to reach
-• Numpad 0 - large key
-
-TWO-KEY COMBOS (if needed):
-• Ctrl+\\ - rarely conflicts
-• Ctrl+; - rarely conflicts
-
-Tip: Scroll Lock is the cleanest option
-if your keyboard has it."""
-        messagebox.showinfo("Hotkey Suggestions", help_text)
 
     def get_mode_hint(self):
         """Return description text for current recording mode."""
@@ -416,15 +483,46 @@ if your keyboard has it."""
             "recording_mode": self.mode_var.get(),
             "silence_duration_sec": silence_duration,
             "audio_feedback": self.feedback_var.get(),
-            "input_device": device_info
+            "input_device": device_info,
+            "auto_paste": self.autopaste_var.get(),
+            "start_with_windows": self.startup_var.get()
         }
 
         config.save_config(new_config)
+
+        # Handle Windows startup setting
+        config.set_startup_enabled(self.startup_var.get())
 
         if self.on_save_callback:
             self.on_save_callback(new_config)
 
         self.close()
+
+    def reset_defaults(self):
+        """Reset all settings to defaults."""
+        if not messagebox.askyesno("Reset to Defaults",
+                                   "Reset all settings to defaults?\nThis will not affect Windows startup setting."):
+            return
+
+        defaults = config.DEFAULTS
+        self.model_var.set(defaults["model_size"])
+        self.lang_var.set(defaults["language"])
+        self.rate_var.set(str(defaults["sample_rate"]))
+        self.hotkey_capture.set_hotkey(defaults["hotkey"])
+        self.mode_var.set(defaults["recording_mode"])
+        self.silence_var.set(str(defaults["silence_duration_sec"]))
+        self.feedback_var.set(defaults["audio_feedback"])
+        self.autopaste_var.set(defaults["auto_paste"])
+        # Reset device to System Default
+        self.refresh_devices()
+        # Update UI
+        self.update_silence_visibility()
+        self.on_mode_change()
+
+    def open_url(self, url):
+        """Open URL in default browser."""
+        import webbrowser
+        webbrowser.open(url)
 
     def close(self):
         """Close the window."""
