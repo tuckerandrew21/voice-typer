@@ -263,10 +263,20 @@ class SettingsWindow:
 
         # Auto-paste checkbox
         row += 1
+        autopaste_frame = ttk.Frame(main_frame)
+        autopaste_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.autopaste_var = tk.BooleanVar(value=self.config.get("auto_paste", True))
-        autopaste_check = ttk.Checkbutton(main_frame, text="Auto-paste after transcription",
+        autopaste_check = ttk.Checkbutton(autopaste_frame, text="Auto-paste after transcription",
                                           variable=self.autopaste_var)
-        autopaste_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+        autopaste_check.pack(side=tk.LEFT)
+        autopaste_help = ttk.Label(autopaste_frame, text="?", font=("", 9, "bold"),
+                                   foreground="#888888", cursor="question_arrow")
+        autopaste_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(autopaste_help, "When enabled, text is automatically typed (Ctrl+V)\n"
+                               "into whichever text field has focus after\n"
+                               "transcription.\n\n"
+                               "When disabled, text is only copied to clipboard -\n"
+                               "you must manually paste.")
 
         # Start with Windows checkbox
         row += 1
