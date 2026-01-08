@@ -28,6 +28,7 @@ current_keys = set()
 is_recording = False
 audio_data = []
 stream = None
+last_tray_click_time = 0  # For double-click detection
 tray_icon = None
 key_listener = None
 transcription_history = text_processor.TranscriptionHistory()
@@ -298,30 +299,28 @@ def stop_recording():
         text_with_space = text + " "
         transcription_history.add(text_with_space)
 
-        # Copy to clipboard
+        # Copy to clipboard using tkinter (more reliable than ctypes)
         try:
-            import ctypes
-            # Open clipboard
-            ctypes.windll.user32.OpenClipboard(0)
-            ctypes.windll.user32.EmptyClipboard()
-            # Copy text (CF_UNICODETEXT = 13)
-            hMem = ctypes.windll.kernel32.GlobalAlloc(0x0042, len(text_with_space) * 2 + 2)
-            pMem = ctypes.windll.kernel32.GlobalLock(hMem)
-            ctypes.cdll.msvcrt.wcscpy(ctypes.c_wchar_p(pMem), text_with_space)
-            ctypes.windll.kernel32.GlobalUnlock(hMem)
-            ctypes.windll.user32.SetClipboardData(13, hMem)
-            ctypes.windll.user32.CloseClipboard()
+            import tkinter as tk
+            root = tk.Tk()
+            root.withdraw()
+            root.clipboard_clear()
+            root.clipboard_append(text_with_space)
+            root.update()
+            root.destroy()
         except Exception as e:
             print(f">> Clipboard error: {e}", flush=True)
 
         # Auto-paste if enabled
         if app_config.get("auto_paste", True):
             print(f">> Pasting: {text}", flush=True)
-            time.sleep(0.1)
-            keyboard_controller.press(Key.ctrl)
+            time.sleep(0.3)  # Wait for focus to return after clipboard
+            keyboard_controller.press(Key.ctrl_l)
+            time.sleep(0.05)
             keyboard_controller.press('v')
             keyboard_controller.release('v')
-            keyboard_controller.release(Key.ctrl)
+            time.sleep(0.05)
+            keyboard_controller.release(Key.ctrl_l)
         else:
             print(f">> Copied to clipboard: {text}", flush=True)
     else:
@@ -407,6 +406,18 @@ def on_settings(icon, item=None):
     threading.Thread(target=open_settings_window, daemon=True).start()
 
 
+def on_tray_click(icon, item=None):
+    """Handle tray icon click - only open settings on double-click."""
+    global last_tray_click_time
+    current_time = time.time()
+
+    if current_time - last_tray_click_time < 0.5:  # 500ms threshold
+        on_settings(icon, item)
+        last_tray_click_time = 0  # Reset to prevent triple-click
+    else:
+        last_tray_click_time = current_time
+
+
 def open_settings_window():
     """Open the settings GUI."""
     import settings_gui
@@ -441,10 +452,11 @@ def get_status_text(item):
 
 def create_tray_icon():
     menu = pystray.Menu(
+        pystray.MenuItem("Open", on_tray_click, default=True, visible=False),
         pystray.MenuItem("MurmurTone", None, enabled=False),
         pystray.MenuItem(get_status_text, None, enabled=False),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem("Settings", on_settings, default=True),
+        pystray.MenuItem("Settings", on_settings),
         pystray.MenuItem("Exit", on_quit)
     )
 
