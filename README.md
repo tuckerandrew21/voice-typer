@@ -1,8 +1,10 @@
-# Voice Typer
+# MurmurTone
 
-A simple, local voice-to-text tool for Windows. Press a hotkey to record your voice, release to transcribe and automatically type the text into any application.
+Your voice, locally. A private, lightweight voice-to-text tool for Windows that respects your privacy by running entirely offline.
 
-Powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for fast, accurate, offline speech recognition.
+Press your hotkey to record, release to transcribe, and your words appear instantly—no cloud, no tracking, no delays.
+
+Powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for fast, accurate, local speech recognition.
 
 ## Features
 
@@ -31,7 +33,7 @@ pip install -r requirements.txt
 ## Usage
 
 1. Double-click `start.vbs` to launch
-2. Look for the Voice Typer icon in the system tray
+2. Look for the MurmurTone icon in the system tray
 3. Press your hotkey (default: **Ctrl+Shift+Space**) to start recording
 4. Release to stop recording and transcribe
 5. Text is automatically typed into the active window
