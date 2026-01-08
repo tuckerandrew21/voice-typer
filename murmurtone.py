@@ -16,6 +16,7 @@ from pynput.keyboard import Controller, Key
 from PIL import Image, ImageDraw
 import pystray
 import config
+import text_processor
 
 # Global state
 app_config = None
@@ -29,6 +30,7 @@ audio_data = []
 stream = None
 tray_icon = None
 key_listener = None
+transcription_history = text_processor.TranscriptionHistory()
 
 # Audio feedback sounds
 start_sound = None
@@ -272,9 +274,30 @@ def stop_recording():
         language = None
 
     segments, _ = model.transcribe(audio, language=language)
-    text = "".join(segment.text for segment in segments).strip()
+    raw_text = "".join(segment.text for segment in segments).strip()
+
+    # Process text through the pipeline (dictionary, fillers, commands)
+    text, should_scratch, scratch_length = text_processor.process_text(
+        raw_text, app_config, transcription_history
+    )
+
+    # Handle "scratch that" - delete previous transcription
+    if should_scratch and scratch_length > 0:
+        print(f">> Scratching last {scratch_length} characters...", flush=True)
+        time.sleep(0.1)
+        for _ in range(scratch_length):
+            keyboard_controller.press(Key.backspace)
+            keyboard_controller.release(Key.backspace)
+        # Don't output anything else for this transcription
+        hotkey_str = config.hotkey_to_string(app_config["hotkey"])
+        print(f"\nReady. Press {hotkey_str}.", flush=True)
+        return
 
     if text:
+        # Track this transcription for potential "scratch that"
+        text_with_space = text + " "
+        transcription_history.add(text_with_space)
+
         # Copy to clipboard
         try:
             import ctypes
@@ -282,7 +305,6 @@ def stop_recording():
             ctypes.windll.user32.OpenClipboard(0)
             ctypes.windll.user32.EmptyClipboard()
             # Copy text (CF_UNICODETEXT = 13)
-            text_with_space = text + " "
             hMem = ctypes.windll.kernel32.GlobalAlloc(0x0042, len(text_with_space) * 2 + 2)
             pMem = ctypes.windll.kernel32.GlobalLock(hMem)
             ctypes.cdll.msvcrt.wcscpy(ctypes.c_wchar_p(pMem), text_with_space)
@@ -380,7 +402,7 @@ def on_quit(icon, item):
     os._exit(0)
 
 
-def on_settings(icon, item):
+def on_settings(icon, item=None):
     """Open settings window in a separate thread."""
     threading.Thread(target=open_settings_window, daemon=True).start()
 
@@ -422,12 +444,11 @@ def create_tray_icon():
         pystray.MenuItem("MurmurTone", None, enabled=False),
         pystray.MenuItem(get_status_text, None, enabled=False),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem("Settings", on_settings),
+        pystray.MenuItem("Settings", on_settings, default=True),
         pystray.MenuItem("Exit", on_quit)
     )
 
     icon = pystray.Icon("murmurtone", icon_ready, "MurmurTone - Loading...", menu)
-    icon.default_action = on_settings
     return icon
 
 
