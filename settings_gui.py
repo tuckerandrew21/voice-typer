@@ -131,13 +131,13 @@ class SettingsWindow:
 
         self.window = tk.Tk()
         self.window.title(f"{config.APP_NAME} Settings v{config.VERSION}")
-        self.window.geometry("500x600")
+        self.window.geometry("500x750")
         self.window.resizable(False, False)
 
         # Center on screen
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() - 500) // 2
-        y = (self.window.winfo_screenheight() - 600) // 2
+        y = (self.window.winfo_screenheight() - 750) // 2
         self.window.geometry(f"+{x}+{y}")
 
         # Main frame with padding
@@ -284,6 +284,94 @@ class SettingsWindow:
         startup_check = ttk.Checkbutton(main_frame, text="Start with Windows",
                                         variable=self.startup_var)
         startup_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        # Text Processing Section
+        row += 1
+        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
+
+        row += 1
+        processing_label = ttk.Label(main_frame, text="Text Processing", font=("", 10, "bold"))
+        processing_label.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+
+        # Voice commands checkbox
+        row += 1
+        self.voice_commands_var = tk.BooleanVar(value=self.config.get("voice_commands_enabled", True))
+        voice_cmd_frame = ttk.Frame(main_frame)
+        voice_cmd_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+        voice_cmd_check = ttk.Checkbutton(voice_cmd_frame, text="Voice commands (period, new line, etc.)",
+                                          variable=self.voice_commands_var)
+        voice_cmd_check.pack(side=tk.LEFT)
+        voice_cmd_help = ttk.Label(voice_cmd_frame, text="?", font=("", 9, "bold"),
+                                   foreground="#888888", cursor="question_arrow")
+        voice_cmd_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(voice_cmd_help, "Converts spoken commands to punctuation:\n\n"
+                               "\"period\" or \"full stop\" → .\n"
+                               "\"comma\" → ,\n"
+                               "\"question mark\" → ?\n"
+                               "\"exclamation point\" → !\n"
+                               "\"new line\" → line break\n"
+                               "\"new paragraph\" → double line break")
+
+        # Scratch that checkbox (indented under voice commands)
+        row += 1
+        self.scratch_that_var = tk.BooleanVar(value=self.config.get("scratch_that_enabled", True))
+        scratch_frame = ttk.Frame(main_frame)
+        scratch_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+        ttk.Label(scratch_frame, text="    ").pack(side=tk.LEFT)  # Indent
+        scratch_check = ttk.Checkbutton(scratch_frame, text="\"Scratch that\" deletes last transcription",
+                                        variable=self.scratch_that_var)
+        scratch_check.pack(side=tk.LEFT)
+
+        # Filler removal checkbox
+        row += 1
+        self.filler_var = tk.BooleanVar(value=self.config.get("filler_removal_enabled", True))
+        filler_frame = ttk.Frame(main_frame)
+        filler_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+        filler_check = ttk.Checkbutton(filler_frame, text="Remove filler words (um, uh, etc.)",
+                                       variable=self.filler_var)
+        filler_check.pack(side=tk.LEFT)
+        filler_help = ttk.Label(filler_frame, text="?", font=("", 9, "bold"),
+                                foreground="#888888", cursor="question_arrow")
+        filler_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(filler_help, "Removes common filler words:\num, uh, er, ah, hmm\nyou know, I mean, sort of, kind of")
+
+        # Aggressive filler removal (indented)
+        row += 1
+        self.filler_aggressive_var = tk.BooleanVar(value=self.config.get("filler_removal_aggressive", False))
+        aggressive_frame = ttk.Frame(main_frame)
+        aggressive_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+        ttk.Label(aggressive_frame, text="    ").pack(side=tk.LEFT)  # Indent
+        aggressive_check = ttk.Checkbutton(aggressive_frame, text="Aggressive mode (also removes \"like\" as filler)",
+                                           variable=self.filler_aggressive_var)
+        aggressive_check.pack(side=tk.LEFT)
+
+        # Custom dictionary section
+        row += 1
+        dict_label_frame = ttk.Frame(main_frame)
+        dict_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(10, 2))
+        ttk.Label(dict_label_frame, text="Custom Dictionary:").pack(side=tk.LEFT)
+        dict_help = ttk.Label(dict_label_frame, text="?", font=("", 9, "bold"),
+                              foreground="#888888", cursor="question_arrow")
+        dict_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(dict_help, "Replace misheard words/phrases:\n\n"
+                          "\"murmur tone\" → \"MurmurTone\"\n"
+                          "\"pie torch\" → \"PyTorch\"\n"
+                          "\"J R R\" → \"J.R.R.\"")
+
+        # Dictionary list
+        row += 1
+        dict_frame = ttk.Frame(main_frame)
+        dict_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        self.dict_listbox = tk.Listbox(dict_frame, width=50, height=3, selectmode=tk.SINGLE)
+        self.dict_listbox.pack(side=tk.LEFT)
+        self.custom_dictionary = self.config.get("custom_dictionary", []).copy()
+        self._refresh_dict_listbox()
+
+        dict_btn_frame = ttk.Frame(dict_frame)
+        dict_btn_frame.pack(side=tk.LEFT, padx=5)
+        ttk.Button(dict_btn_frame, text="Add", width=6, command=self.add_dict_entry).pack(pady=1)
+        ttk.Button(dict_btn_frame, text="Remove", width=6, command=self.remove_dict_entry).pack(pady=1)
 
         # Buttons frame
         row += 1
@@ -495,7 +583,14 @@ class SettingsWindow:
             "audio_feedback": self.feedback_var.get(),
             "input_device": device_info,
             "auto_paste": self.autopaste_var.get(),
-            "start_with_windows": self.startup_var.get()
+            "start_with_windows": self.startup_var.get(),
+            # Text processing settings
+            "voice_commands_enabled": self.voice_commands_var.get(),
+            "scratch_that_enabled": self.scratch_that_var.get(),
+            "filler_removal_enabled": self.filler_var.get(),
+            "filler_removal_aggressive": self.filler_aggressive_var.get(),
+            "custom_fillers": self.config.get("custom_fillers", []),  # Preserve existing
+            "custom_dictionary": self.custom_dictionary
         }
 
         config.save_config(new_config)
@@ -523,6 +618,13 @@ class SettingsWindow:
         self.silence_var.set(str(defaults["silence_duration_sec"]))
         self.feedback_var.set(defaults["audio_feedback"])
         self.autopaste_var.set(defaults["auto_paste"])
+        # Reset text processing settings
+        self.voice_commands_var.set(defaults["voice_commands_enabled"])
+        self.scratch_that_var.set(defaults["scratch_that_enabled"])
+        self.filler_var.set(defaults["filler_removal_enabled"])
+        self.filler_aggressive_var.set(defaults["filler_removal_aggressive"])
+        self.custom_dictionary = []
+        self._refresh_dict_listbox()
         # Reset device to System Default
         self.refresh_devices()
         # Update UI
@@ -533,6 +635,69 @@ class SettingsWindow:
         """Open URL in default browser."""
         import webbrowser
         webbrowser.open(url)
+
+    def _refresh_dict_listbox(self):
+        """Refresh the dictionary listbox display."""
+        self.dict_listbox.delete(0, tk.END)
+        for entry in self.custom_dictionary:
+            from_text = entry.get("from", "")
+            to_text = entry.get("to", "")
+            self.dict_listbox.insert(tk.END, f'"{from_text}" → "{to_text}"')
+
+    def add_dict_entry(self):
+        """Show dialog to add a dictionary entry."""
+        dialog = tk.Toplevel(self.window)
+        dialog.title("Add Dictionary Entry")
+        dialog.geometry("350x150")
+        dialog.resizable(False, False)
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        # Center on parent
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 350) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 150) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        frame = ttk.Frame(dialog, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="From (what Whisper hears):").grid(row=0, column=0, sticky=tk.W, pady=5)
+        from_var = tk.StringVar()
+        from_entry = ttk.Entry(frame, textvariable=from_var, width=35)
+        from_entry.grid(row=0, column=1, sticky=tk.W, pady=5)
+
+        ttk.Label(frame, text="To (what you want):").grid(row=1, column=0, sticky=tk.W, pady=5)
+        to_var = tk.StringVar()
+        to_entry = ttk.Entry(frame, textvariable=to_var, width=35)
+        to_entry.grid(row=1, column=1, sticky=tk.W, pady=5)
+
+        def do_add():
+            from_text = from_var.get().strip()
+            to_text = to_var.get().strip()
+            if from_text and to_text:
+                self.custom_dictionary.append({
+                    "from": from_text,
+                    "to": to_text,
+                    "case_sensitive": False
+                })
+                self._refresh_dict_listbox()
+                dialog.destroy()
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=2, column=0, columnspan=2, pady=15)
+        ttk.Button(btn_frame, text="Add", command=do_add).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+        from_entry.focus_set()
+
+    def remove_dict_entry(self):
+        """Remove selected dictionary entry."""
+        selection = self.dict_listbox.curselection()
+        if selection:
+            idx = selection[0]
+            self.custom_dictionary.pop(idx)
+            self._refresh_dict_listbox()
 
     def close(self):
         """Close the window."""

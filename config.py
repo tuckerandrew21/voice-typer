@@ -26,7 +26,14 @@ DEFAULTS = {
     "audio_feedback": True,
     "input_device": None,  # None = system default, or device name string
     "auto_paste": True,  # Automatically paste after transcription
-    "start_with_windows": False  # Launch on Windows startup
+    "start_with_windows": False,  # Launch on Windows startup
+    # Text processing features
+    "voice_commands_enabled": True,  # Process voice commands (period, new line, etc.)
+    "scratch_that_enabled": True,  # Enable "scratch that" to delete last transcription
+    "filler_removal_enabled": True,  # Remove filler words (um, uh, etc.)
+    "filler_removal_aggressive": False,  # Also remove context-sensitive fillers like "like"
+    "custom_fillers": [],  # Additional filler words to remove
+    "custom_dictionary": []  # Text replacements: [{"from": "...", "to": "...", "case_sensitive": False}]
 }
 
 # GitHub repo for updates (TODO: update with real URLs)
