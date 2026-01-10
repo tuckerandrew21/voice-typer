@@ -796,6 +796,121 @@ def on_settings(icon, item=None):
     threading.Thread(target=open_settings_window, daemon=True).start()
 
 
+def on_history(icon, item=None):
+    """Open history viewer in a separate thread."""
+    def show_history():
+        import tkinter as tk
+        from tkinter import ttk
+
+        root = tk.Tk()
+        root.title("Transcription History")
+        root.geometry("500x400")
+
+        # Load history from disk
+        entries = text_processor.TranscriptionHistory.load_from_disk()
+
+        frame = ttk.Frame(root, padding=10)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Recent Transcriptions", font=("", 11, "bold")).pack(anchor=tk.W)
+
+        # Listbox with scrollbar
+        list_frame = ttk.Frame(frame)
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        scrollbar = ttk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, font=("", 10))
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=listbox.yview)
+
+        # Populate listbox (newest first)
+        for entry in reversed(entries):
+            timestamp = entry.get("timestamp", "")[:16]  # Trim to YYYY-MM-DD HH:MM
+            text = entry.get("text", "").strip()[:50]  # First 50 chars
+            if len(entry.get("text", "")) > 50:
+                text += "..."
+            listbox.insert(tk.END, f"[{timestamp}] {text}")
+
+        # Store full entries for copy
+        full_entries = list(reversed(entries))
+
+        def copy_selected():
+            selection = listbox.curselection()
+            if selection:
+                idx = selection[0]
+                full_text = full_entries[idx].get("text", "")
+                root.clipboard_clear()
+                root.clipboard_append(full_text)
+                root.update()
+
+        def clear_history():
+            if tk.messagebox.askyesno("Clear History", "Delete all transcription history?"):
+                text_processor.TranscriptionHistory.clear_on_disk()
+                listbox.delete(0, tk.END)
+                full_entries.clear()
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(fill=tk.X)
+        ttk.Button(btn_frame, text="Copy Selected", command=copy_selected).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Clear History", command=clear_history).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Close", command=root.destroy).pack(side=tk.RIGHT, padx=5)
+
+        if not entries:
+            listbox.insert(tk.END, "(No transcriptions yet)")
+
+        root.mainloop()
+
+    threading.Thread(target=show_history, daemon=True).start()
+
+
+def on_stats(icon, item=None):
+    """Open statistics viewer in a separate thread."""
+    def show_stats():
+        import tkinter as tk
+        from tkinter import ttk
+
+        root = tk.Tk()
+        root.title("Usage Statistics")
+        root.geometry("350x300")
+
+        data = stats.load_stats()
+
+        frame = ttk.Frame(root, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Your Voice Typing Stats", font=("", 12, "bold")).pack(anchor=tk.W, pady=(0, 15))
+
+        # Stats grid
+        stats_frame = ttk.Frame(frame)
+        stats_frame.pack(fill=tk.X)
+
+        minutes_saved, _ = stats.calculate_time_saved(data.get('total_characters', 0))
+        labels = [
+            ("Total Transcriptions:", f"{data.get('total_transcriptions', 0):,}"),
+            ("Total Words:", f"{data.get('total_words', 0):,}"),
+            ("Total Characters:", f"{data.get('total_characters', 0):,}"),
+            ("Time Saved:", stats.format_time_saved(minutes_saved)),
+        ]
+
+        for i, (label, value) in enumerate(labels):
+            ttk.Label(stats_frame, text=label).grid(row=i, column=0, sticky=tk.W, pady=3)
+            ttk.Label(stats_frame, text=value, font=("", 10, "bold")).grid(row=i, column=1, sticky=tk.E, pady=3, padx=(20, 0))
+
+        # First use date
+        first_use = data.get("first_use_date")
+        if first_use:
+            ttk.Separator(frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=15)
+            ttk.Label(frame, text=f"Using MurmurTone since: {first_use[:10]}").pack(anchor=tk.W)
+
+        ttk.Button(frame, text="Close", command=root.destroy).pack(side=tk.BOTTOM, pady=10)
+
+        root.mainloop()
+
+    threading.Thread(target=show_stats, daemon=True).start()
+
+
 def on_tray_click(icon, item=None):
     """Handle tray icon click - only open settings on double-click."""
     global last_tray_click_time
@@ -876,6 +991,9 @@ def create_tray_icon():
         pystray.MenuItem("Open", on_tray_click, default=True, visible=False),
         pystray.MenuItem("MurmurTone", None, enabled=False),
         pystray.MenuItem(get_status_text, None, enabled=False),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem("History", on_history),
+        pystray.MenuItem("Statistics", on_stats),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Settings", on_settings),
         pystray.MenuItem("Exit", on_quit)

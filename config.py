@@ -61,7 +61,31 @@ GITHUB_REPO = "#"
 HELP_URL = "#"
 
 MODEL_OPTIONS = ["tiny.en", "base.en", "small.en", "medium.en"]
-LANGUAGE_OPTIONS = ["en", "auto"]
+# Language codes supported by Whisper
+LANGUAGE_OPTIONS = [
+    "en", "auto", "es", "fr", "de", "it", "pt", "nl", "ru",
+    "zh", "ja", "ko", "ar", "hi", "pl", "tr", "vi", "th"
+]
+LANGUAGE_LABELS = {
+    "en": "English",
+    "auto": "Auto-detect",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "nl": "Dutch",
+    "ru": "Russian",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "ar": "Arabic",
+    "hi": "Hindi",
+    "pl": "Polish",
+    "tr": "Turkish",
+    "vi": "Vietnamese",
+    "th": "Thai",
+}
 RECORDING_MODE_OPTIONS = ["push_to_talk", "auto_stop"]
 
 # Processing mode options (combines device + compute type)

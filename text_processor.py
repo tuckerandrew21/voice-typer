@@ -65,12 +65,19 @@ ACTION_COMMANDS = {
     "peace": "ctrl+v",  # Whisper mishearing of "paste" - safe due to standalone-only
     "cut": "ctrl+x",
     "cut that": "ctrl+x",
+    "bold": "ctrl+b",
+    "bold that": "ctrl+b",
+    "italic": "ctrl+i",
+    "italic that": "ctrl+i",
+    "italics": "ctrl+i",
+    "underline": "ctrl+u",
+    "underline that": "ctrl+u",
 }
 
 # Single-word commands that only trigger when spoken alone (not embedded in text)
 # This prevents mishearings like "peace" (paste) from triggering in "I want peace and quiet"
 # Multi-word variants like "paste that" still work normally
-STANDALONE_ACTION_COMMANDS = {"copy", "paste", "peace", "cut", "undo", "redo"}
+STANDALONE_ACTION_COMMANDS = {"copy", "paste", "peace", "cut", "undo", "redo", "bold", "italic", "italics", "underline"}
 
 # Filler words (always removed)
 FILLER_WORDS = {"um", "uh", "er", "ah", "hmm", "mm"}

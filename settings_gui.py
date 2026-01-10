@@ -314,9 +314,13 @@ class SettingsWindow:
         # Language
         row += 1
         ttk.Label(main_frame, text="Language:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.lang_var = tk.StringVar(value=self.config["language"])
+        # Use friendly labels in dropdown
+        lang_labels = [config.LANGUAGE_LABELS.get(code, code) for code in config.LANGUAGE_OPTIONS]
+        current_lang = self.config["language"]
+        current_label = config.LANGUAGE_LABELS.get(current_lang, current_lang)
+        self.lang_var = tk.StringVar(value=current_label)
         lang_combo = ttk.Combobox(main_frame, textvariable=self.lang_var,
-                                  values=config.LANGUAGE_OPTIONS, state="readonly", width=15)
+                                  values=lang_labels, state="readonly", width=15)
         lang_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
 
         # Input Device
@@ -1222,9 +1226,14 @@ class SettingsWindow:
         # Get selected device info (None for System Default)
         device_info = self.get_selected_device_info()
 
+        # Convert language label back to code
+        lang_label = self.lang_var.get()
+        lang_code = next((code for code, label in config.LANGUAGE_LABELS.items()
+                          if label == lang_label), lang_label)
+
         new_config = {
             "model_size": self.model_var.get(),
-            "language": self.lang_var.get(),
+            "language": lang_code,
             "sample_rate": sample_rate,
             "hotkey": self.hotkey_capture.get_hotkey(),
             "recording_mode": self.mode_var.get(),
@@ -1278,7 +1287,8 @@ class SettingsWindow:
 
         defaults = config.DEFAULTS
         self.model_var.set(defaults["model_size"])
-        self.lang_var.set(defaults["language"])
+        default_lang_label = config.LANGUAGE_LABELS.get(defaults["language"], defaults["language"])
+        self.lang_var.set(default_lang_label)
         self.rate_var.set(str(defaults["sample_rate"]))
         self.hotkey_capture.set_hotkey(defaults["hotkey"])
         self.mode_var.set(defaults["recording_mode"])
