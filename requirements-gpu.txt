@@ -1,0 +1,9 @@
+# GPU requirements for MurmurTone
+# Install with: pip install -r requirements-gpu.txt
+
+# Include base requirements
+-r requirements.txt
+
+# NVIDIA CUDA libraries for GPU acceleration
+nvidia-cublas-cu12>=12.1.0
+nvidia-cudnn-cu12>=9.1.0

@@ -17,3 +17,7 @@ build_venv/
 models/
 .mcp.json
 .restart_signal
+
+# Local planning docs
+COMPETITIVE_ANALYSIS.md
+HANDOFF.md
