@@ -391,3 +391,31 @@ class TestCustomVocabularyConfig:
         assert "TensorFlow" in loaded["custom_vocabulary"]
         assert "Kubernetes" in loaded["custom_vocabulary"]
         assert "Dr. Smith" in loaded["custom_vocabulary"]
+
+
+class TestFileTranscriptionConfig:
+    """Tests for file transcription configuration."""
+
+    def test_file_transcription_save_location_default(self):
+        """file_transcription_save_location should default to None."""
+        assert config.DEFAULTS["file_transcription_save_location"] is None
+
+    def test_file_transcription_auto_open_default(self):
+        """file_transcription_auto_open should default to True."""
+        assert config.DEFAULTS["file_transcription_auto_open"] is True
+
+    def test_file_transcription_config_saved_and_loaded(self, tmp_path, mocker):
+        """File transcription settings should persist across save/load."""
+        config_file = tmp_path / "test_config.json"
+        mocker.patch('config.get_config_path', return_value=str(config_file))
+
+        # Save config with custom file transcription settings
+        test_config = config.DEFAULTS.copy()
+        test_config["file_transcription_save_location"] = "/custom/path"
+        test_config["file_transcription_auto_open"] = False
+        config.save_config(test_config)
+
+        # Load and verify
+        loaded = config.load_config()
+        assert loaded["file_transcription_save_location"] == "/custom/path"
+        assert loaded["file_transcription_auto_open"] is False

@@ -1030,6 +1030,138 @@ def on_stats(icon, item=None):
     threading.Thread(target=show_stats, daemon=True).start()
 
 
+def on_transcribe_file(icon, item=None):
+    """Open file transcription dialog in a separate thread."""
+    def transcribe_file_workflow():
+        import tkinter as tk
+        from tkinter import ttk, filedialog, messagebox
+        import file_transcription
+
+        # Check if model is ready
+        if not model_ready or model is None:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Model Not Ready", "Please wait for the Whisper model to finish loading.")
+            root.destroy()
+            return
+
+        # Show file picker
+        root = tk.Tk()
+        root.withdraw()
+        file_path = filedialog.askopenfilename(
+            title="Select Audio/Video File",
+            filetypes=[
+                ("Audio files", "*.mp3 *.wav *.m4a *.flac *.ogg *.opus"),
+                ("Video files", "*.mp4 *.avi *.mov *.webm"),
+                ("All supported", "*.mp3 *.wav *.m4a *.mp4 *.avi *.mov *.flac *.ogg *.opus *.webm"),
+                ("All files", "*.*")
+            ]
+        )
+        root.destroy()
+
+        if not file_path:
+            return  # User cancelled
+
+        # Create progress window
+        progress_window = tk.Tk()
+        progress_window.title("Transcribing File")
+        progress_window.geometry("400x150")
+        progress_window.resizable(False, False)
+
+        frame = ttk.Frame(progress_window, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        # File name label
+        file_name = os.path.basename(file_path)
+        ttk.Label(frame, text=f"File: {file_name}", font=("", 10, "bold")).pack(anchor=tk.W, pady=(0, 10))
+
+        # Status label
+        status_var = tk.StringVar(value="Starting...")
+        status_label = ttk.Label(frame, textvariable=status_var)
+        status_label.pack(anchor=tk.W, pady=(0, 10))
+
+        # Progress bar
+        progress_bar = ttk.Progressbar(frame, mode='indeterminate', length=350)
+        progress_bar.pack(pady=(0, 10))
+        progress_bar.start(10)
+
+        # Cancel button
+        cancelled = [False]  # Use list to avoid nonlocal
+
+        def on_cancel():
+            cancelled[0] = True
+            progress_window.destroy()
+
+        cancel_btn = ttk.Button(frame, text="Cancel", command=on_cancel)
+        cancel_btn.pack()
+
+        # Progress callback
+        def update_progress(progress, status):
+            if not cancelled[0]:
+                status_var.set(status)
+                progress_window.update()
+
+        # Run transcription in background thread
+        result = [None, False]  # [text, success]
+
+        def do_transcription():
+            text, success = file_transcription.transcribe_file(
+                file_path, model, app_config, update_progress
+            )
+            result[0] = text
+            result[1] = success
+            if not cancelled[0]:
+                progress_window.quit()  # Exit mainloop
+
+        transcription_thread = threading.Thread(target=do_transcription, daemon=True)
+        transcription_thread.start()
+
+        # Show progress window (blocks until transcription completes)
+        progress_window.mainloop()
+
+        # Check if cancelled
+        if cancelled[0]:
+            return
+
+        # Check result
+        transcription_text, success = result[0], result[1]
+
+        if not success or not transcription_text:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Transcription Failed", "Failed to transcribe the file. Please try again.")
+            root.destroy()
+            return
+
+        # Save transcription
+        save_location = app_config.get("file_transcription_save_location")
+        saved_path = file_transcription.save_transcription(transcription_text, file_path, save_location)
+
+        if not saved_path:
+            # User cancelled save
+            return
+
+        # Show success message
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo("Transcription Complete", f"Transcription saved to:\n{saved_path}")
+        root.destroy()
+
+        # Optionally open file
+        if app_config.get("file_transcription_auto_open", True):
+            try:
+                if sys.platform == "win32":
+                    os.startfile(saved_path)
+                elif sys.platform == "darwin":
+                    os.system(f"open '{saved_path}'")
+                else:
+                    os.system(f"xdg-open '{saved_path}'")
+            except Exception:
+                pass  # Silently fail if can't open
+
+    threading.Thread(target=transcribe_file_workflow, daemon=True).start()
+
+
 def on_tray_click(icon, item=None):
     """Handle tray icon click - only open settings on double-click."""
     global last_tray_click_time
@@ -1113,6 +1245,7 @@ def create_tray_icon():
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("History", on_history),
         pystray.MenuItem("Statistics", on_stats),
+        pystray.MenuItem("Transcribe File...", on_transcribe_file),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Settings", on_settings),
         pystray.MenuItem("Exit", on_quit)

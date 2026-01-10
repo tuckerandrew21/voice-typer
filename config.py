@@ -60,6 +60,9 @@ DEFAULTS = {
     # Translation mode
     "translation_enabled": False,  # Enable translation mode (speak one language, output English)
     "translation_source_language": "auto",  # Source language or auto-detect
+    # File transcription
+    "file_transcription_save_location": None,  # None = ask each time, or default folder path
+    "file_transcription_auto_open": True,  # Open transcription file after completion
 }
 
 # GitHub repo for updates (TODO: update with real URLs)
