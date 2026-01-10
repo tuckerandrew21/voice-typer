@@ -597,15 +597,23 @@ def stop_recording():
         preview_window.show_transcribing()
     audio = np.concatenate(audio_data, axis=0).flatten()
 
-    language = app_config.get("language", "en")
-    if language == "auto":
-        language = None
+    # Determine task and language based on translation mode
+    if app_config.get("translation_enabled"):
+        task = "translate"
+        language = app_config.get("translation_source_language", "auto")
+        if language == "auto":
+            language = None  # Let Whisper auto-detect
+    else:
+        task = "transcribe"
+        language = app_config.get("language", "en")
+        if language == "auto":
+            language = None
 
     # Get initial_prompt for punctuation optimization
     initial_prompt = app_config.get("initial_prompt", "")
 
-    # Transcribe with optional initial_prompt
-    transcribe_params = {"language": language}
+    # Transcribe/translate with optional initial_prompt
+    transcribe_params = {"task": task, "language": language}
     if initial_prompt:
         transcribe_params["initial_prompt"] = initial_prompt
 

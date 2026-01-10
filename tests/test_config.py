@@ -333,3 +333,29 @@ class TestPasteModeConfig:
     def test_direct_typing_delay_is_positive(self):
         """Direct typing delay should be a positive number."""
         assert config.DEFAULTS["direct_typing_delay_ms"] >= 0
+
+
+class TestTranslationModeConfig:
+    """Tests for translation mode configuration."""
+
+    def test_translation_enabled_default_exists(self):
+        """translation_enabled should have a default value."""
+        assert "translation_enabled" in config.DEFAULTS
+
+    def test_translation_enabled_is_bool(self):
+        """translation_enabled should be a boolean."""
+        assert isinstance(config.DEFAULTS["translation_enabled"], bool)
+
+    def test_translation_source_language_default_exists(self):
+        """translation_source_language should have a default value."""
+        assert "translation_source_language" in config.DEFAULTS
+
+    def test_translation_source_language_is_string(self):
+        """translation_source_language should be a string."""
+        assert isinstance(config.DEFAULTS["translation_source_language"], str)
+
+    def test_translation_source_language_valid(self):
+        """translation_source_language default should be valid."""
+        source_lang = config.DEFAULTS["translation_source_language"]
+        # Should be 'auto' or a language in LANGUAGE_OPTIONS
+        assert source_lang == "auto" or source_lang in config.LANGUAGE_OPTIONS

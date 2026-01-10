@@ -319,9 +319,30 @@ class SettingsWindow:
         current_lang = self.config["language"]
         current_label = config.LANGUAGE_LABELS.get(current_lang, current_lang)
         self.lang_var = tk.StringVar(value=current_label)
-        lang_combo = ttk.Combobox(main_frame, textvariable=self.lang_var,
-                                  values=lang_labels, state="readonly", width=15)
-        lang_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
+        self.lang_combo = ttk.Combobox(main_frame, textvariable=self.lang_var,
+                                       values=lang_labels, state="readonly", width=15)
+        self.lang_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
+
+        # Translation Mode
+        row += 1
+        self.translation_enabled_var = tk.BooleanVar(value=self.config.get("translation_enabled", False))
+        trans_check = ttk.Checkbutton(main_frame, text="Translation Mode (speak one language, output English)",
+                                      variable=self.translation_enabled_var,
+                                      command=self.on_translation_toggle)
+        trans_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        # Translation Source Language
+        row += 1
+        ttk.Label(main_frame, text="Source Language:").grid(row=row, column=0, sticky=tk.W, pady=5, padx=(20, 0))
+        current_trans_lang = self.config.get("translation_source_language", "auto")
+        current_trans_label = config.LANGUAGE_LABELS.get(current_trans_lang, current_trans_lang)
+        self.trans_lang_var = tk.StringVar(value=current_trans_label)
+        self.trans_lang_combo = ttk.Combobox(main_frame, textvariable=self.trans_lang_var,
+                                             values=lang_labels, state="readonly", width=15)
+        self.trans_lang_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
+
+        # Update initial state
+        self.on_translation_toggle()
 
         # Input Device
         row += 1
@@ -813,6 +834,18 @@ class SettingsWindow:
         else:
             self.silence_frame.grid_remove()
 
+    def on_translation_toggle(self):
+        """Update UI when translation mode is toggled."""
+        translation_enabled = self.translation_enabled_var.get()
+        if translation_enabled:
+            # Disable regular language dropdown when translation is enabled
+            self.lang_combo.config(state="disabled")
+            self.trans_lang_combo.config(state="readonly")
+        else:
+            # Enable regular language dropdown when translation is disabled
+            self.lang_combo.config(state="readonly")
+            self.trans_lang_combo.config(state="disabled")
+
     def refresh_gpu_status(self):
         """Update the GPU status indicator."""
         is_available, status_msg, detail = get_cuda_status()
@@ -1231,9 +1264,16 @@ class SettingsWindow:
         lang_code = next((code for code, label in config.LANGUAGE_LABELS.items()
                           if label == lang_label), lang_label)
 
+        # Convert translation source language label back to code
+        trans_lang_label = self.trans_lang_var.get()
+        trans_lang_code = next((code for code, label in config.LANGUAGE_LABELS.items()
+                               if label == trans_lang_label), trans_lang_label)
+
         new_config = {
             "model_size": self.model_var.get(),
             "language": lang_code,
+            "translation_enabled": self.translation_enabled_var.get(),
+            "translation_source_language": trans_lang_code,
             "sample_rate": sample_rate,
             "hotkey": self.hotkey_capture.get_hotkey(),
             "recording_mode": self.mode_var.get(),
@@ -1289,6 +1329,12 @@ class SettingsWindow:
         self.model_var.set(defaults["model_size"])
         default_lang_label = config.LANGUAGE_LABELS.get(defaults["language"], defaults["language"])
         self.lang_var.set(default_lang_label)
+        # Reset translation settings
+        self.translation_enabled_var.set(defaults["translation_enabled"])
+        default_trans_lang = defaults["translation_source_language"]
+        default_trans_label = config.LANGUAGE_LABELS.get(default_trans_lang, default_trans_lang)
+        self.trans_lang_var.set(default_trans_label)
+        self.on_translation_toggle()  # Update UI state
         self.rate_var.set(str(defaults["sample_rate"]))
         self.hotkey_capture.set_hotkey(defaults["hotkey"])
         self.mode_var.set(defaults["recording_mode"])

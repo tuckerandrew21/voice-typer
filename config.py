@@ -56,6 +56,9 @@ DEFAULTS = {
     "sound_command": True,
     # Whisper transcription optimization
     "initial_prompt": "Use proper punctuation including periods, commas, and question marks.",  # Context hint for Whisper
+    # Translation mode
+    "translation_enabled": False,  # Enable translation mode (speak one language, output English)
+    "translation_source_language": "auto",  # Source language or auto-detect
 }
 
 # GitHub repo for updates (TODO: update with real URLs)
