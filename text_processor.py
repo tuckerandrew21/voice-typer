@@ -58,7 +58,19 @@ ACTION_COMMANDS = {
     "select all": "ctrl+a",
     "undo": "ctrl+z",
     "redo": "ctrl+y",
+    "copy": "ctrl+c",
+    "copy that": "ctrl+c",
+    "paste": "ctrl+v",
+    "paste that": "ctrl+v",
+    "peace": "ctrl+v",  # Whisper mishearing of "paste" - safe due to standalone-only
+    "cut": "ctrl+x",
+    "cut that": "ctrl+x",
 }
+
+# Single-word commands that only trigger when spoken alone (not embedded in text)
+# This prevents mishearings like "peace" (paste) from triggering in "I want peace and quiet"
+# Multi-word variants like "paste that" still work normally
+STANDALONE_ACTION_COMMANDS = {"copy", "paste", "peace", "cut", "undo", "redo"}
 
 # Filler words (always removed)
 FILLER_WORDS = {"um", "uh", "er", "ah", "hmm", "mm"}
@@ -76,12 +88,46 @@ class TranscriptionHistory:
     """
     Track recent transcriptions for "scratch that" and history display.
     Stores text, character count, and timestamp.
+    Persists to file for cross-process access (settings window).
     """
 
-    def __init__(self, max_entries=50):
-        self.entries = []  # List of {"text": str, "char_count": int, "timestamp": datetime}
+    def __init__(self, max_entries=50, persist=True):
+        self.entries = []  # List of {"text": str, "char_count": int, "timestamp": str}
         self.max_entries = max_entries
         self._on_change_callbacks = []
+        self._persist = persist
+        self._history_file = self._get_history_path()
+        if persist:
+            self._load_from_file()
+
+    def _get_history_path(self):
+        """Get path to history file in config directory."""
+        import os
+        config_dir = os.path.join(os.environ.get("APPDATA", ""), "MurmurTone")
+        os.makedirs(config_dir, exist_ok=True)
+        return os.path.join(config_dir, "history.json")
+
+    def _load_from_file(self):
+        """Load history from file if it exists."""
+        import json
+        try:
+            if os.path.exists(self._history_file):
+                with open(self._history_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.entries = data.get("entries", [])[-self.max_entries:]
+        except Exception:
+            self.entries = []
+
+    def _save_to_file(self):
+        """Save history to file."""
+        if not self._persist:
+            return
+        import json
+        try:
+            with open(self._history_file, "w", encoding="utf-8") as f:
+                json.dump({"entries": self.entries}, f, indent=2)
+        except Exception:
+            pass  # Don't crash on save failures
 
     def add(self, text):
         """Add a transcription to history."""
@@ -90,11 +136,12 @@ class TranscriptionHistory:
             entry = {
                 "text": text,
                 "char_count": len(text),
-                "timestamp": datetime.now()
+                "timestamp": datetime.now().isoformat()
             }
             self.entries.append(entry)
             if len(self.entries) > self.max_entries:
                 self.entries.pop(0)
+            self._save_to_file()
             self._notify_change()
 
     def get_last_length(self):
@@ -114,6 +161,7 @@ class TranscriptionHistory:
     def clear(self):
         """Clear all history."""
         self.entries = []
+        self._save_to_file()
         self._notify_change()
 
     def get_all(self):
@@ -140,6 +188,41 @@ class TranscriptionHistory:
                 callback()
             except Exception:
                 pass  # Don't let callback errors break history
+
+    @staticmethod
+    def load_from_disk():
+        """Load history from disk (for use by settings GUI subprocess)."""
+        import json
+        import os
+        history_file = os.path.join(
+            os.environ.get("APPDATA", ""),
+            "MurmurTone",
+            "history.json"
+        )
+        try:
+            if os.path.exists(history_file):
+                with open(history_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("entries", [])
+        except Exception:
+            pass
+        return []
+
+    @staticmethod
+    def clear_on_disk():
+        """Clear history file on disk (for use by settings GUI subprocess)."""
+        import json
+        import os
+        history_file = os.path.join(
+            os.environ.get("APPDATA", ""),
+            "MurmurTone",
+            "history.json"
+        )
+        try:
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump({"entries": []}, f)
+        except Exception:
+            pass
 
 
 def apply_custom_dictionary(text, dictionary):
@@ -364,11 +447,16 @@ def process_voice_commands(text):
         # Single word commands - strip punctuation for matching
         word_clean = strip_punctuation(words[i]).lower()
 
-        # Check single-word action commands (undo, redo)
+        # Check single-word action commands (undo, redo, copy, paste, cut)
         if word_clean in ACTION_COMMANDS:
-            actions.append(ACTION_COMMANDS[word_clean])
-            i += 1
-            continue
+            # Standalone-only commands require being the entire utterance
+            # This prevents mishearings like "peace" triggering paste in sentences
+            is_standalone_only = word_clean in STANDALONE_ACTION_COMMANDS
+            is_standalone = len(words) == 1
+            if not is_standalone_only or is_standalone:
+                actions.append(ACTION_COMMANDS[word_clean])
+                i += 1
+                continue
 
         # Check single-word formatting commands (bullet)
         if word_clean in FORMATTING_COMMANDS:

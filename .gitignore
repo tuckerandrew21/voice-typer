@@ -16,3 +16,4 @@ build_venv/
 # Bundled models (too large for git)
 models/
 .mcp.json
+.restart_signal

@@ -9,6 +9,27 @@ import tkinter as tk
 import threading
 import queue
 import atexit
+import logging
+
+log = logging.getLogger("murmurtone")
+
+# Theme definitions (also in config.py, duplicated here to avoid import issues)
+THEMES = {
+    "dark": {
+        "bg": "#1a1a1a",
+        "text": "#ffffff",
+        "recording": "#ff6b6b",
+        "transcribing": "#ffd93d",
+        "success": "#ffffff",
+    },
+    "light": {
+        "bg": "#f5f5f5",
+        "text": "#1a1a1a",
+        "recording": "#e53935",
+        "transcribing": "#f9a825",
+        "success": "#1a1a1a",
+    },
+}
 
 
 class PreviewWindow:
@@ -39,10 +60,13 @@ class PreviewWindow:
         self.position = "bottom-right"  # top-right, bottom-right, top-left, bottom-left
         self.auto_hide_delay = 2.0  # seconds, 0 to disable
         self.opacity = 0.9
+        self.theme = "dark"  # dark, light
+        self.font_size = 11  # 8-18
 
         # Internal state (only accessed from tkinter thread)
         self._window = None
         self._label = None
+        self._frame = None
         self._hide_timer_id = None
 
     def start(self):
@@ -65,31 +89,42 @@ class PreviewWindow:
         self._stopped.wait(timeout=2.0)
         self._thread = None
 
-    def show_recording(self):
-        """Show 'Recording...' status (red)."""
+    def _get_theme_color(self, key):
+        """Get color from current theme."""
+        theme_colors = THEMES.get(self.theme, THEMES["dark"])
+        return theme_colors.get(key, "#ffffff")
+
+    def show_recording(self, duration_seconds=None):
+        """Show 'Recording...' status (red), optionally with duration."""
         if not self.enabled:
             return
-        self._send_show("Recording...", "#ff6b6b", auto_hide=False)
+        if duration_seconds is not None:
+            mins, secs = divmod(int(duration_seconds), 60)
+            text = f"Recording... {mins}:{secs:02d}"
+        else:
+            text = "Recording..."
+        self._send_show(text, self._get_theme_color("recording"), auto_hide=False)
 
     def show_transcribing(self):
         """Show 'Transcribing...' status (yellow)."""
         if not self.enabled:
             return
-        self._send_show("Transcribing...", "#ffd93d", auto_hide=False)
+        self._send_show("Transcribing...", self._get_theme_color("transcribing"), auto_hide=False)
 
     def show_text(self, text, auto_hide=True):
-        """Show transcribed text (white), optionally auto-hiding."""
+        """Show transcribed text, optionally auto-hiding."""
         if not self.enabled:
             return
         # Truncate very long text for display
         display_text = text[:200] + "..." if len(text) > 200 else text
-        self._send_show(display_text, "#ffffff", auto_hide=auto_hide)
+        self._send_show(display_text, self._get_theme_color("success"), auto_hide=auto_hide)
 
     def hide(self):
         """Hide the preview window."""
         self._command_queue.put((self.CMD_HIDE, None))
 
-    def configure(self, enabled=None, position=None, auto_hide_delay=None, opacity=None):
+    def configure(self, enabled=None, position=None, auto_hide_delay=None, opacity=None,
+                  theme=None, font_size=None):
         """
         Update configuration. Thread-safe.
 
@@ -98,6 +133,8 @@ class PreviewWindow:
             position: Screen position (top-right, bottom-right, top-left, bottom-left)
             auto_hide_delay: Seconds before auto-hiding (0 to disable)
             opacity: Window opacity (0.0 to 1.0)
+            theme: Color theme (dark, light)
+            font_size: Font size (8-18)
         """
         config = {}
         if enabled is not None:
@@ -112,6 +149,12 @@ class PreviewWindow:
         if opacity is not None:
             self.opacity = opacity
             config["opacity"] = opacity
+        if theme is not None:
+            self.theme = theme
+            config["theme"] = theme
+        if font_size is not None:
+            self.font_size = font_size
+            config["font_size"] = font_size
 
         if config:
             self._command_queue.put((self.CMD_CONFIGURE, config))
@@ -132,7 +175,7 @@ class PreviewWindow:
             self._started.set()
             self._process_commands()
         except Exception as e:
-            print(f"Preview window error: {e}", flush=True)
+            log.error(f"Preview window error: {e}")
         finally:
             self._cleanup()
             self._stopped.set()
@@ -145,20 +188,24 @@ class PreviewWindow:
         self._window.attributes("-topmost", True)  # Always on top
         self._window.attributes("-alpha", self.opacity)
 
-        # Dark semi-transparent background
-        self._window.configure(bg="#1a1a1a")
+        # Get theme colors
+        bg_color = self._get_theme_color("bg")
+        text_color = self._get_theme_color("text")
+
+        # Apply background color
+        self._window.configure(bg=bg_color)
 
         # Main frame with padding
-        frame = tk.Frame(self._window, bg="#1a1a1a", padx=15, pady=10)
-        frame.pack(fill=tk.BOTH, expand=True)
+        self._frame = tk.Frame(self._window, bg=bg_color, padx=15, pady=10)
+        self._frame.pack(fill=tk.BOTH, expand=True)
 
         # Text label
         self._label = tk.Label(
-            frame,
+            self._frame,
             text="",
-            font=("Segoe UI", 11),
-            fg="#ffffff",
-            bg="#1a1a1a",
+            font=("Segoe UI", self.font_size),
+            fg=text_color,
+            bg=bg_color,
             wraplength=350,
             justify=tk.LEFT
         )
@@ -233,6 +280,24 @@ class PreviewWindow:
             if self._window.state() == "normal":
                 self._position_window()
 
+        if "theme" in config:
+            self.theme = config["theme"]
+            # Update colors
+            bg_color = self._get_theme_color("bg")
+            try:
+                self._window.configure(bg=bg_color)
+                self._frame.configure(bg=bg_color)
+                self._label.configure(bg=bg_color)
+            except tk.TclError:
+                pass
+
+        if "font_size" in config:
+            self.font_size = config["font_size"]
+            try:
+                self._label.configure(font=("Segoe UI", self.font_size))
+            except tk.TclError:
+                pass
+
     def _position_window(self):
         """Position the window based on settings."""
         self._window.update_idletasks()
@@ -302,9 +367,9 @@ def get_preview():
         return _preview
 
 
-def show_recording():
-    """Show recording status."""
-    get_preview().show_recording()
+def show_recording(duration_seconds=None):
+    """Show recording status, optionally with duration."""
+    get_preview().show_recording(duration_seconds=duration_seconds)
 
 
 def show_transcribing():

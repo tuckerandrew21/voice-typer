@@ -39,6 +39,19 @@ DEFAULTS = {
     "preview_enabled": True,
     "preview_position": "bottom-right",  # top-right, bottom-right, top-left, bottom-left
     "preview_auto_hide_delay": 2.0,  # seconds, 0 to disable auto-hide
+    "preview_theme": "dark",  # dark, light
+    "preview_font_size": 11,  # 8-18
+    # GPU/CUDA settings - processing_mode combines device + compute type
+    "processing_mode": "auto",  # auto, cpu, gpu-balanced, gpu-quality
+    # Noise gate settings
+    "noise_gate_enabled": True,
+    "noise_gate_threshold_db": -40,  # Range: -60 to -20 dB
+    # Audio feedback settings
+    "audio_feedback_volume": 0.3,  # 0.0 to 1.0
+    "sound_processing": True,
+    "sound_success": True,
+    "sound_error": True,
+    "sound_command": True,
 }
 
 # GitHub repo for updates (TODO: update with real URLs)
@@ -49,6 +62,42 @@ MODEL_OPTIONS = ["tiny.en", "base.en", "small.en", "medium.en"]
 LANGUAGE_OPTIONS = ["en", "auto"]
 RECORDING_MODE_OPTIONS = ["push_to_talk", "auto_stop"]
 
+# Processing mode options (combines device + compute type)
+PROCESSING_MODE_OPTIONS = ["auto", "cpu", "gpu-balanced", "gpu-quality"]
+PROCESSING_MODE_LABELS = {
+    "auto": "Auto",
+    "cpu": "CPU",
+    "gpu-balanced": "GPU - Balanced",
+    "gpu-quality": "GPU - Quality",
+}
+PROCESSING_MODE_MAP = {
+    "auto": {"device": "auto", "compute_type": "float16"},
+    "cpu": {"device": "cpu", "compute_type": "int8"},
+    "gpu-balanced": {"device": "cuda", "compute_type": "float16"},
+    "gpu-quality": {"device": "cuda", "compute_type": "float32"},
+}
+
+# Preview window theme options
+PREVIEW_THEME_OPTIONS = ["dark", "light"]
+PREVIEW_THEMES = {
+    "dark": {
+        "bg": "#1a1a1a",
+        "text": "#ffffff",
+        "recording": "#ff6b6b",
+        "transcribing": "#ffd93d",
+        "success": "#ffffff",
+    },
+    "light": {
+        "bg": "#f5f5f5",
+        "text": "#1a1a1a",
+        "recording": "#e53935",
+        "transcribing": "#f9a825",
+        "success": "#1a1a1a",
+    },
+}
+PREVIEW_FONT_SIZE_MIN = 8
+PREVIEW_FONT_SIZE_MAX = 18
+
 
 def get_config_path():
     """Get path to settings.json in user's AppData directory."""
@@ -56,6 +105,31 @@ def get_config_path():
     config_dir = os.path.join(app_data, "MurmurTone")
     os.makedirs(config_dir, exist_ok=True)
     return os.path.join(config_dir, "settings.json")
+
+
+def migrate_gpu_settings(config):
+    """
+    Migrate old whisper_device + compute_type to new processing_mode.
+    Returns True if migration occurred.
+    """
+    if "whisper_device" not in config and "compute_type" not in config:
+        return False  # Nothing to migrate
+
+    device = config.pop("whisper_device", "auto")
+    compute = config.pop("compute_type", "int8")
+
+    # Map old settings to new processing_mode
+    if device == "cpu":
+        config["processing_mode"] = "cpu"
+    elif compute == "float32":
+        config["processing_mode"] = "gpu-quality"
+    elif compute == "float16":
+        config["processing_mode"] = "gpu-balanced" if device == "cuda" else "auto"
+    else:
+        # Default to auto (uses GPU float16 if available, else CPU int8)
+        config["processing_mode"] = "auto"
+
+    return True
 
 
 def load_config():
@@ -73,6 +147,9 @@ def load_config():
                     hotkey = DEFAULTS["hotkey"].copy()
                     hotkey.update(saved["hotkey"])
                     config["hotkey"] = hotkey
+                # Migrate old GPU settings if present
+                if migrate_gpu_settings(config):
+                    save_config(config)  # Persist migration
                 return config
         except (json.JSONDecodeError, IOError):
             pass

@@ -5,7 +5,78 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import numpy as np
 import sounddevice as sd
+import subprocess
+import sys
+import threading
+import os
 import config
+import text_processor
+
+
+def check_cuda_available():
+    """Check if CUDA is available for GPU acceleration."""
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        # torch not installed, try ctranslate2 directly
+        try:
+            import ctranslate2
+            # ctranslate2 API requires device argument
+            cuda_types = ctranslate2.get_supported_compute_types("cuda")
+            return len(cuda_types) > 0
+        except (ImportError, Exception):
+            return False
+
+
+# Set to True to test the "GPU not available" UI state
+_TEST_GPU_UNAVAILABLE = False
+
+
+def get_cuda_status():
+    """
+    Get detailed CUDA status info.
+    Returns tuple: (is_available, status_message, gpu_name_or_reason)
+    """
+    # Test mode: simulate GPU unavailable
+    if _TEST_GPU_UNAVAILABLE:
+        return (False, "GPU libraries not installed", None)
+
+    # Check if ctranslate2 supports CUDA compute types
+    cuda_supported = False
+    try:
+        import ctranslate2
+        # ctranslate2 API requires device argument
+        cuda_types = ctranslate2.get_supported_compute_types("cuda")
+        cuda_supported = len(cuda_types) > 0
+    except (ImportError, Exception):
+        pass
+
+    if not cuda_supported:
+        # Check if torch can detect CUDA
+        try:
+            import torch
+            if torch.cuda.is_available():
+                cuda_supported = True
+        except ImportError:
+            pass
+
+    if not cuda_supported:
+        return (False, "GPU libraries not installed", None)
+
+    # CUDA is supported, try to get GPU name via torch
+    try:
+        import torch
+        if torch.cuda.is_available():
+            gpu_name = torch.cuda.get_device_name(0)
+            return (True, "CUDA Available", gpu_name)
+        else:
+            # ctranslate2 supports CUDA but torch doesn't see a GPU
+            # This means libraries are installed but no GPU hardware
+            return (True, "CUDA Available", "via ctranslate2")
+    except ImportError:
+        # No torch, but ctranslate2 says CUDA works
+        return (True, "CUDA Available", "via ctranslate2")
 
 
 class Tooltip:
@@ -117,10 +188,10 @@ class SettingsWindow:
         self.config = current_config.copy()
         self.on_save_callback = on_save_callback
         self.window = None
-        # Device test state
-        self.test_stream = None
-        self.test_running = False
         self.devices_list = []  # List of (display_name, device_info) tuples
+        # Audio test state (for noise gate level meter)
+        self.noise_test_stream = None
+        self.noise_test_running = False
 
     def show(self):
         """Show the settings window."""
@@ -131,13 +202,13 @@ class SettingsWindow:
 
         self.window = tk.Tk()
         self.window.title(f"{config.APP_NAME} Settings v{config.VERSION}")
-        self.window.geometry("500x950")
+        self.window.geometry("500x1250")
         self.window.resizable(False, False)
 
         # Center on screen
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() - 500) // 2
-        y = (self.window.winfo_screenheight() - 950) // 2
+        y = (self.window.winfo_screenheight() - 1250) // 2
         self.window.geometry(f"+{x}+{y}")
 
         # Main frame with padding
@@ -160,6 +231,85 @@ class SettingsWindow:
                            "base.en   - Fast, good accuracy\n"
                            "small.en  - Balanced speed/accuracy\n"
                            "medium.en - Slowest, best accuracy")
+
+        # Processing Mode (combined device + compute type)
+        row += 1
+        ttk.Label(main_frame, text="Processing:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        processing_frame = ttk.Frame(main_frame)
+        processing_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
+        self.processing_mode_var = tk.StringVar(value=self.config.get("processing_mode", "auto"))
+        # Create display values for the combobox
+        display_values = [config.PROCESSING_MODE_LABELS[m] for m in config.PROCESSING_MODE_OPTIONS]
+        processing_combo = ttk.Combobox(processing_frame, textvariable=self.processing_mode_var,
+                                        values=display_values, state="readonly", width=14)
+        # Set display value based on stored mode
+        current_mode = self.config.get("processing_mode", "auto")
+        processing_combo.set(config.PROCESSING_MODE_LABELS.get(current_mode, "Auto"))
+        processing_combo.pack(side=tk.LEFT)
+        processing_help = ttk.Label(processing_frame, text="?", font=("", 9, "bold"),
+                                    foreground="#888888", cursor="question_arrow")
+        processing_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(processing_help, "Auto          - GPU if available, else CPU (recommended)\n"
+                                "CPU           - Always use CPU (slower, reliable)\n"
+                                "GPU - Balanced - Fast + accurate (float16)\n"
+                                "GPU - Quality  - Highest quality (float32, slower)")
+        self.processing_combo = processing_combo
+
+        # Bind change event for warning updates
+        processing_combo.bind("<<ComboboxSelected>>", self.on_gpu_setting_change)
+
+        # GPU Status Section
+        row += 1
+        gpu_status_frame = ttk.Frame(main_frame)
+        gpu_status_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(10, 5))
+
+        ttk.Label(gpu_status_frame, text="GPU Status:").pack(side=tk.LEFT)
+
+        # Status indicator dot (using Unicode circle)
+        self.gpu_status_dot = ttk.Label(gpu_status_frame, text="\u25cf", font=("", 12))
+        self.gpu_status_dot.pack(side=tk.LEFT, padx=(5, 2))
+
+        # Status text
+        self.gpu_status_label = ttk.Label(gpu_status_frame, text="Checking...")
+        self.gpu_status_label.pack(side=tk.LEFT)
+
+        # Refresh button
+        refresh_btn = ttk.Button(gpu_status_frame, text="\u21bb", width=3, command=self.refresh_gpu_status)
+        refresh_btn.pack(side=tk.LEFT, padx=(10, 0))
+        Tooltip(refresh_btn, "Refresh GPU status")
+
+        # GPU details row (GPU name or reason for unavailability)
+        row += 1
+        self.gpu_details_frame = ttk.Frame(main_frame)
+        self.gpu_details_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, padx=(85, 0))
+        self.gpu_details_label = ttk.Label(self.gpu_details_frame, text="", font=("", 8), foreground="gray")
+        self.gpu_details_label.pack(side=tk.LEFT)
+
+        # Install GPU Support button row (only visible when needed)
+        row += 1
+        self.install_gpu_frame = ttk.Frame(main_frame)
+        self.install_gpu_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.install_gpu_btn = ttk.Button(self.install_gpu_frame, text="Install GPU Support",
+                                          command=self.install_gpu_support)
+        self.install_gpu_btn.pack(side=tk.LEFT)
+        install_help = ttk.Label(self.install_gpu_frame, text="?", font=("", 9, "bold"),
+                                 foreground="#888888", cursor="question_arrow")
+        install_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(install_help, "Downloads and installs NVIDIA CUDA libraries\n"
+                             "for GPU acceleration (~2-3 GB download).\n\n"
+                             "Requires: NVIDIA GPU with CUDA support")
+
+        # GPU warning label (for incompatible settings)
+        row += 1
+        self.gpu_warning_frame = ttk.Frame(main_frame)
+        self.gpu_warning_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W)
+        self.gpu_warning_label = ttk.Label(self.gpu_warning_frame, text="", foreground="#cc6600", font=("", 8))
+        self.gpu_warning_label.pack(side=tk.LEFT)
+
+        # Initialize GPU status display
+        self.cuda_available = False
+        self.cuda_libs_installed = True  # Assume installed until we check
+        self.refresh_gpu_status()
 
         # Language
         row += 1
@@ -188,18 +338,6 @@ class SettingsWindow:
         device_hint = ttk.Label(main_frame, text="(showing enabled devices - restart app to detect new defaults)",
                                 font=("", 8), foreground="gray")
         device_hint.grid(row=row, column=1, sticky=tk.W)
-
-        # Test button and level meter
-        row += 1
-        test_frame = ttk.Frame(main_frame)
-        test_frame.grid(row=row, column=1, sticky=tk.W, pady=2)
-        self.test_btn = ttk.Button(test_frame, text="Test", width=6, command=self.toggle_test)
-        self.test_btn.pack(side=tk.LEFT)
-        self.level_canvas = tk.Canvas(test_frame, width=180, height=16, bg="#333333",
-                                      highlightthickness=1, highlightbackground="#666666")
-        self.level_canvas.pack(side=tk.LEFT, padx=5)
-        # Draw empty level bar
-        self.level_bar = self.level_canvas.create_rectangle(0, 0, 0, 16, fill="#00aa00", width=0)
 
         # Sample rate
         row += 1
@@ -254,12 +392,110 @@ class SettingsWindow:
         ttk.Label(self.silence_frame, text="seconds").pack(side=tk.LEFT)
         self.update_silence_visibility()
 
+        # Noise gate section
+        row += 1
+        noise_gate_frame = ttk.Frame(main_frame)
+        noise_gate_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.noise_gate_var = tk.BooleanVar(value=self.config.get("noise_gate_enabled", True))
+        noise_gate_check = ttk.Checkbutton(noise_gate_frame, text="Noise gate",
+                                           variable=self.noise_gate_var)
+        noise_gate_check.pack(side=tk.LEFT)
+        noise_gate_help = ttk.Label(noise_gate_frame, text="?", font=("", 9, "bold"),
+                                    foreground="#888888", cursor="question_arrow")
+        noise_gate_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(noise_gate_help, "Filters out audio below a threshold.\n"
+                                "Helps ignore background noise and reduce\n"
+                                "garbage transcriptions.\n\n"
+                                "Lower values = more sensitive (picks up quiet sounds)\n"
+                                "Higher values = less sensitive (only loud sounds)")
+
+        # Combined noise gate level meter with draggable threshold marker (Discord-style)
+        row += 1
+        noise_level_frame = ttk.Frame(main_frame)
+        noise_level_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
+
+        self.noise_test_btn = ttk.Button(noise_level_frame, text="Test", width=6,
+                                          command=self.toggle_noise_test)
+        self.noise_test_btn.pack(side=tk.LEFT)
+
+        # Canvas dimensions
+        self.meter_width = 200
+        self.meter_height = 20
+
+        self.noise_level_canvas = tk.Canvas(noise_level_frame, width=self.meter_width, height=self.meter_height,
+                                             bg="#333333", highlightthickness=1,
+                                             highlightbackground="#666666", cursor="hand2")
+        self.noise_level_canvas.pack(side=tk.LEFT, padx=5)
+
+        # Level bar (shows current audio level) - behind threshold marker
+        self.noise_level_bar = self.noise_level_canvas.create_rectangle(
+            0, 0, 0, self.meter_height, fill="#00aa00", width=0)
+
+        # Threshold marker (vertical orange line) - draggable
+        self.noise_threshold_var = tk.IntVar(value=self.config.get("noise_gate_threshold_db", -40))
+        initial_x = self._db_to_x(self.noise_threshold_var.get())
+        self.threshold_marker = self.noise_level_canvas.create_line(
+            initial_x, 0, initial_x, self.meter_height, fill="#ff6600", width=3)
+
+        # dB label
+        self.threshold_label = ttk.Label(noise_level_frame, text=f"{self.noise_threshold_var.get()} dB", width=7)
+        self.threshold_label.pack(side=tk.LEFT)
+
+        # Make threshold marker draggable
+        self.noise_level_canvas.bind("<Button-1>", self._on_threshold_click)
+        self.noise_level_canvas.bind("<B1-Motion>", self._on_threshold_drag)
+
+        # Update label when threshold changes
+        def update_threshold_label(*args):
+            self.threshold_label.config(text=f"{self.noise_threshold_var.get()} dB")
+        self.noise_threshold_var.trace_add("write", update_threshold_label)
+
         # Audio feedback checkbox
         row += 1
+        feedback_frame = ttk.Frame(main_frame)
+        feedback_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.feedback_var = tk.BooleanVar(value=self.config.get("audio_feedback", True))
-        feedback_check = ttk.Checkbutton(main_frame, text="Audio feedback (click sounds)",
+        feedback_check = ttk.Checkbutton(feedback_frame, text="Audio feedback",
                                          variable=self.feedback_var)
-        feedback_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+        feedback_check.pack(side=tk.LEFT)
+        feedback_help = ttk.Label(feedback_frame, text="?", font=("", 9, "bold"),
+                                  foreground="#888888", cursor="question_arrow")
+        feedback_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(feedback_help, "Play sounds for different states:\n"
+                              "• Start/stop recording clicks\n"
+                              "• Processing sound while transcribing\n"
+                              "• Success chime when text is typed\n"
+                              "• Error buzz when no speech detected")
+
+        # Sound type checkboxes (indented)
+        row += 1
+        sound_options_frame = ttk.Frame(main_frame)
+        sound_options_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
+        self.sound_processing_var = tk.BooleanVar(value=self.config.get("sound_processing", True))
+        ttk.Checkbutton(sound_options_frame, text="Processing",
+                        variable=self.sound_processing_var).pack(side=tk.LEFT, padx=(0, 10))
+        self.sound_success_var = tk.BooleanVar(value=self.config.get("sound_success", True))
+        ttk.Checkbutton(sound_options_frame, text="Success",
+                        variable=self.sound_success_var).pack(side=tk.LEFT, padx=(0, 10))
+        self.sound_error_var = tk.BooleanVar(value=self.config.get("sound_error", True))
+        ttk.Checkbutton(sound_options_frame, text="Error",
+                        variable=self.sound_error_var).pack(side=tk.LEFT)
+
+        # Volume slider
+        row += 1
+        volume_frame = ttk.Frame(main_frame)
+        volume_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
+        ttk.Label(volume_frame, text="Volume:").pack(side=tk.LEFT)
+        self.volume_var = tk.DoubleVar(value=self.config.get("audio_feedback_volume", 0.3))
+        volume_scale = ttk.Scale(volume_frame, from_=0.0, to=1.0, orient=tk.HORIZONTAL,
+                                 variable=self.volume_var, length=120)
+        volume_scale.pack(side=tk.LEFT, padx=5)
+        self.volume_label = ttk.Label(volume_frame, text=f"{int(self.volume_var.get() * 100)}%", width=5)
+        self.volume_label.pack(side=tk.LEFT)
+        # Update label when slider moves
+        def update_volume_label(*args):
+            self.volume_label.config(text=f"{int(self.volume_var.get() * 100)}%")
+        self.volume_var.trace_add("write", update_volume_label)
 
         # Auto-paste checkbox
         row += 1
@@ -335,6 +571,24 @@ class SettingsWindow:
         Tooltip(delay_help, "How long the transcribed text stays visible\n"
                            "before the preview window disappears.\n\n"
                            "Set to 0 to keep it visible until next recording.")
+
+        # Preview theme dropdown
+        row += 1
+        theme_frame = ttk.Frame(main_frame)
+        theme_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
+        ttk.Label(theme_frame, text="Theme:").pack(side=tk.LEFT)
+        self.preview_theme_var = tk.StringVar(value=self.config.get("preview_theme", "dark"))
+        theme_combo = ttk.Combobox(theme_frame, textvariable=self.preview_theme_var,
+                                   values=config.PREVIEW_THEME_OPTIONS, state="readonly", width=8)
+        theme_combo.pack(side=tk.LEFT, padx=(5, 0))
+
+        # Preview font size
+        ttk.Label(theme_frame, text="Font size:").pack(side=tk.LEFT, padx=(15, 0))
+        self.preview_font_size_var = tk.IntVar(value=self.config.get("preview_font_size", 11))
+        font_spin = ttk.Spinbox(theme_frame, from_=config.PREVIEW_FONT_SIZE_MIN,
+                                to=config.PREVIEW_FONT_SIZE_MAX,
+                                textvariable=self.preview_font_size_var, width=4)
+        font_spin.pack(side=tk.LEFT, padx=(5, 0))
 
         # Text Processing Section
         row += 1
@@ -452,6 +706,35 @@ class SettingsWindow:
         ttk.Button(cmd_btn_frame, text="Add", width=6, command=self.add_cmd_entry).pack(pady=1)
         ttk.Button(cmd_btn_frame, text="Remove", width=6, command=self.remove_cmd_entry).pack(pady=1)
 
+        # Separator before history
+        row += 1
+        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
+
+        # Transcription History section
+        row += 1
+        history_label_frame = ttk.Frame(main_frame)
+        history_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(5, 2))
+        ttk.Label(history_label_frame, text="Transcription History", font=("", 10, "bold")).pack(side=tk.LEFT)
+        ttk.Label(history_label_frame, text="(Recent transcriptions)", font=("", 9), foreground="gray").pack(side=tk.LEFT, padx=(5, 0))
+
+        row += 1
+        history_frame = ttk.Frame(main_frame)
+        history_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        # History listbox with scrollbar
+        self.history_listbox = tk.Listbox(history_frame, width=60, height=4, selectmode=tk.SINGLE)
+        history_scroll = ttk.Scrollbar(history_frame, orient=tk.VERTICAL, command=self.history_listbox.yview)
+        self.history_listbox.configure(yscrollcommand=history_scroll.set)
+        self.history_listbox.pack(side=tk.LEFT)
+        history_scroll.pack(side=tk.LEFT, fill=tk.Y)
+
+        history_btn_frame = ttk.Frame(history_frame)
+        history_btn_frame.pack(side=tk.LEFT, padx=5)
+        ttk.Button(history_btn_frame, text="Refresh", width=8, command=self._refresh_history).pack(pady=1)
+        ttk.Button(history_btn_frame, text="Clear", width=8, command=self._clear_history).pack(pady=1)
+
+        self._refresh_history()
+
         # Buttons frame
         row += 1
         btn_frame = ttk.Frame(main_frame)
@@ -509,6 +792,236 @@ class SettingsWindow:
         else:
             self.silence_frame.grid_remove()
 
+    def refresh_gpu_status(self):
+        """Update the GPU status indicator."""
+        is_available, status_msg, detail = get_cuda_status()
+        self.cuda_available = is_available
+        self.cuda_libs_installed = status_msg != "GPU libraries not installed"
+
+        if is_available:
+            # Green status
+            self.gpu_status_dot.config(foreground="#00aa00")
+            self.gpu_status_label.config(text=status_msg, foreground="#00aa00")
+            if detail:
+                self.gpu_details_label.config(text=f"\u2514 {detail}")
+            else:
+                self.gpu_details_label.config(text="")
+            # Hide install button when CUDA is available
+            self.install_gpu_frame.grid_remove()
+        else:
+            # Red status
+            self.gpu_status_dot.config(foreground="#cc0000")
+            self.gpu_status_label.config(text=status_msg, foreground="#cc0000")
+            if detail:
+                self.gpu_details_label.config(text=f"\u2514 {detail}")
+            else:
+                self.gpu_details_label.config(text="")
+            # Show install button only if libraries aren't installed
+            if not self.cuda_libs_installed:
+                self.install_gpu_frame.grid()
+            else:
+                self.install_gpu_frame.grid_remove()
+
+        # Update warnings based on current settings
+        self.on_gpu_setting_change()
+
+    def on_gpu_setting_change(self, event=None):
+        """Update warnings when processing mode changes."""
+        # Get current mode from display label
+        display_value = self.processing_combo.get()
+        # Find the internal mode key
+        mode = "auto"
+        for key, label in config.PROCESSING_MODE_LABELS.items():
+            if label == display_value:
+                mode = key
+                break
+
+        warnings = []
+
+        # Warn if GPU mode selected but CUDA not available
+        if mode in ("gpu-balanced", "gpu-quality") and not self.cuda_available:
+            warnings.append("\u26a0 GPU not available - will fall back to CPU")
+
+        if warnings:
+            self.gpu_warning_label.config(text="\n".join(warnings))
+            self.gpu_warning_frame.grid()
+        else:
+            self.gpu_warning_label.config(text="")
+            self.gpu_warning_frame.grid_remove()
+
+    def get_processing_mode(self):
+        """Get the internal processing mode key from the display label."""
+        display_value = self.processing_combo.get()
+        for key, label in config.PROCESSING_MODE_LABELS.items():
+            if label == display_value:
+                return key
+        return "auto"  # Default fallback
+
+    def install_gpu_support(self):
+        """Install GPU dependencies via pip using a modal dialog."""
+        # Find requirements-gpu.txt relative to this file or the app directory
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        req_file = os.path.join(app_dir, "requirements-gpu.txt")
+
+        if not os.path.exists(req_file):
+            messagebox.showerror("File Not Found",
+                               f"Could not find requirements-gpu.txt\n\n"
+                               f"Expected at: {req_file}\n\n"
+                               f"Please install manually:\n"
+                               f"pip install -r requirements-gpu.txt")
+            return
+
+        # Confirm with user
+        if not messagebox.askyesno("Install GPU Support",
+                                   "This will download and install NVIDIA CUDA libraries.\n\n"
+                                   "Download size: ~2-3 GB\n"
+                                   "Requires: NVIDIA GPU with CUDA support\n\n"
+                                   "Continue?",
+                                   parent=self.window):
+            return
+
+        # Create modal dialog
+        dialog = tk.Toplevel(self.window)
+        dialog.title("Installing GPU Support")
+        dialog.geometry("400x180")
+        dialog.resizable(False, False)
+        dialog.transient(self.window)
+        dialog.grab_set()  # Make it modal
+
+        # Center on parent window
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 400) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 180) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        # Prevent closing during install
+        dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        frame = ttk.Frame(dialog, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        # Title
+        title_label = ttk.Label(frame, text="Installing NVIDIA CUDA Libraries",
+                                font=("", 11, "bold"))
+        title_label.pack(pady=(0, 15))
+
+        # Progress bar
+        progress = ttk.Progressbar(frame, mode='indeterminate', length=350)
+        progress.pack(pady=5)
+        progress.start(10)
+
+        # Status label
+        status_label = ttk.Label(frame, text="Downloading... this may take several minutes",
+                                  font=("", 9), foreground="gray")
+        status_label.pack(pady=10)
+
+        # Size hint
+        size_hint = ttk.Label(frame, text="(Download size: ~2-3 GB)",
+                              font=("", 8), foreground="#888888")
+        size_hint.pack()
+
+        # Store references for the completion handler
+        self._install_dialog = dialog
+        self._install_progress = progress
+        self._install_status = status_label
+
+        def run_install():
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-r", req_file],
+                    capture_output=True,
+                    text=True,
+                    cwd=app_dir
+                )
+                success = result.returncode == 0
+                output = result.stdout + result.stderr
+
+                # Schedule UI update on main thread
+                self.window.after(0, lambda: self.install_complete(success, output))
+            except Exception as e:
+                self.window.after(0, lambda: self.install_complete(False, str(e)))
+
+        # Run in background thread
+        thread = threading.Thread(target=run_install, daemon=True)
+        thread.start()
+
+    def install_complete(self, success, output):
+        """Handle completion of GPU installation."""
+        # Stop progress and close dialog
+        if hasattr(self, '_install_progress'):
+            self._install_progress.stop()
+        if hasattr(self, '_install_dialog') and self._install_dialog:
+            self._install_dialog.destroy()
+            self._install_dialog = None
+
+        if success:
+            # Custom dialog with Restart Now / Later buttons
+            self._show_restart_dialog()
+            # Refresh status (may still show unavailable until restart)
+            self.refresh_gpu_status()
+        else:
+            # Show error with manual instructions
+            msg = ("Installation failed.\n\n"
+                   "Try installing manually:\n"
+                   "1. Open a terminal/command prompt\n"
+                   "2. Navigate to the MurmurTone folder\n"
+                   "3. Run: pip install -r requirements-gpu.txt\n\n")
+            if output:
+                # Truncate long output
+                if len(output) > 500:
+                    output = output[:500] + "..."
+                msg += f"Error details:\n{output}"
+            messagebox.showerror("Installation Failed", msg, parent=self.window)
+
+    def _show_restart_dialog(self):
+        """Show a dialog with Restart Now / Later options."""
+        dialog = tk.Toplevel(self.window)
+        dialog.title("Installation Complete")
+        dialog.geometry("350x150")
+        dialog.resizable(False, False)
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        # Center on parent
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 350) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 150) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        frame = ttk.Frame(dialog, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        # Success message
+        ttk.Label(frame, text="GPU support installed successfully!",
+                  font=("", 10, "bold")).pack(pady=(0, 10))
+        ttk.Label(frame, text="Restart MurmurTone to use GPU acceleration.",
+                  font=("", 9)).pack(pady=(0, 15))
+
+        # Button frame
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack()
+
+        def restart_now():
+            dialog.destroy()
+            self.close()
+            # Write restart signal file for parent process
+            app_dir = os.path.dirname(os.path.abspath(__file__))
+            restart_signal = os.path.join(app_dir, ".restart_signal")
+            try:
+                with open(restart_signal, "w") as f:
+                    f.write("restart")
+            except Exception:
+                pass  # Best effort
+            # Launch new instance - parent will see signal and exit
+            script = os.path.join(app_dir, "murmurtone.py")
+            subprocess.Popen([sys.executable, script], cwd=app_dir)
+
+        def later():
+            dialog.destroy()
+
+        ttk.Button(btn_frame, text="Restart Now", command=restart_now).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Later", command=later).pack(side=tk.LEFT, padx=5)
+
     def refresh_devices(self):
         """Refresh the list of available input devices."""
         self.devices_list = config.get_input_devices()
@@ -548,18 +1061,46 @@ class SettingsWindow:
                 return device_info
         return None  # System Default
 
-    def toggle_test(self):
-        """Start or stop the microphone test."""
-        if self.test_running:
-            self.stop_test()
-        else:
-            self.start_test()
+    def _db_to_x(self, db):
+        """Convert dB value (-60 to -20) to x pixel position."""
+        # Map -60 to -20 dB → 0 to meter_width pixels
+        return int((db + 60) / 40 * self.meter_width)
 
-    def start_test(self):
-        """Start testing the selected microphone with level meter."""
+    def _x_to_db(self, x):
+        """Convert x pixel position to dB value (-60 to -20)."""
+        # Clamp x to valid range
+        x = max(0, min(self.meter_width, x))
+        # Map 0 to meter_width pixels → -60 to -20 dB
+        return int(-60 + (x / self.meter_width) * 40)
+
+    def _on_threshold_click(self, event):
+        """Handle click on the level meter to set threshold."""
+        db = self._x_to_db(event.x)
+        self.noise_threshold_var.set(db)
+        self._update_threshold_marker_position()
+
+    def _on_threshold_drag(self, event):
+        """Handle drag on the level meter to adjust threshold."""
+        db = self._x_to_db(event.x)
+        self.noise_threshold_var.set(db)
+        self._update_threshold_marker_position()
+
+    def _update_threshold_marker_position(self):
+        """Update the threshold marker position on the canvas."""
+        x = self._db_to_x(self.noise_threshold_var.get())
+        self.noise_level_canvas.coords(self.threshold_marker, x, 0, x, self.meter_height)
+
+    def toggle_noise_test(self):
+        """Start or stop the noise gate level test."""
+        if self.noise_test_running:
+            self.stop_noise_test()
+        else:
+            self.start_noise_test()
+
+    def start_noise_test(self):
+        """Start testing microphone with noise gate level visualization."""
         device_info = self.get_selected_device_info()
 
-        # Get device index
         device_index = None
         if device_info:
             device_index = device_info.get("index")
@@ -570,71 +1111,77 @@ class SettingsWindow:
             sample_rate = 16000
 
         try:
-            self.test_stream = sd.InputStream(
+            self.noise_test_stream = sd.InputStream(
                 samplerate=sample_rate,
                 channels=1,
                 dtype='float32',
                 device=device_index,
-                callback=self.test_audio_callback
+                callback=self.noise_test_audio_callback
             )
-            self.test_stream.start()
-            self.test_running = True
-            self.test_btn.config(text="Stop")
-            # Schedule auto-stop after 5 seconds
-            self.window.after(5000, self.auto_stop_test)
+            self.noise_test_stream.start()
+            self.noise_test_running = True
+            self.noise_test_btn.config(text="Stop")
+            # Schedule auto-stop after 10 seconds (longer than device test)
+            self.window.after(10000, self.auto_stop_noise_test)
         except Exception as e:
             messagebox.showerror("Test Failed", f"Could not open device:\n{e}")
 
-    def test_audio_callback(self, indata, frames, time_info, status):
-        """Callback for test audio stream - updates level meter."""
-        if not self.test_running:
+    def noise_test_audio_callback(self, indata, frames, time_info, status):
+        """Callback for noise gate test - updates level meter with gating visual."""
+        if not self.noise_test_running:
             return
         # Calculate RMS level
         rms = np.sqrt(np.mean(indata**2))
         # Convert to dB (with floor at -60dB)
         db = 20 * np.log10(max(rms, 1e-6))
-        # Normalize to 0-1 range (-60dB to 0dB)
+        # Get threshold for comparison
+        threshold_db = self.noise_threshold_var.get()
+        # Normalize to 0-1 range (-60dB to 0dB) - same as level meter
         level = max(0, min(1, (db + 60) / 60))
+        # Determine if gated (below threshold)
+        is_gated = db < threshold_db
         # Schedule UI update on main thread
         try:
-            self.window.after_idle(lambda: self.update_level_meter(level))
+            self.window.after_idle(lambda: self.update_noise_level_meter(level, is_gated))
         except Exception:
             pass  # Window may be closing
 
-    def update_level_meter(self, level):
-        """Update the level meter display."""
-        if not self.test_running or not self.level_canvas:
+    def update_noise_level_meter(self, level, is_gated):
+        """Update the noise gate level meter display."""
+        if not self.noise_test_running or not self.noise_level_canvas:
             return
-        width = int(level * 180)
-        # Color gradient: green -> yellow -> red
-        if level < 0.5:
-            color = "#00aa00"  # Green
+        width = int(level * self.meter_width)
+        # Color based on gating status
+        if is_gated:
+            color = "#555555"  # Dim gray when gated (below threshold)
+        elif level < 0.5:
+            color = "#00aa00"  # Green - normal
         elif level < 0.75:
-            color = "#aaaa00"  # Yellow
+            color = "#aaaa00"  # Yellow - getting loud
         else:
-            color = "#aa0000"  # Red
-        self.level_canvas.coords(self.level_bar, 0, 0, width, 16)
-        self.level_canvas.itemconfig(self.level_bar, fill=color)
+            color = "#aa0000"  # Red - very loud
+        self.noise_level_canvas.coords(self.noise_level_bar, 0, 0, width, self.meter_height)
+        self.noise_level_canvas.itemconfig(self.noise_level_bar, fill=color)
 
-    def auto_stop_test(self):
-        """Auto-stop test after timeout."""
-        if self.test_running:
-            self.stop_test()
+    def auto_stop_noise_test(self):
+        """Auto-stop noise gate test after timeout."""
+        if self.noise_test_running:
+            self.stop_noise_test()
 
-    def stop_test(self):
-        """Stop the microphone test."""
-        self.test_running = False
-        if self.test_stream:
+    def stop_noise_test(self):
+        """Stop the noise gate test."""
+        self.noise_test_running = False
+        if self.noise_test_stream:
             try:
-                self.test_stream.stop()
-                self.test_stream.close()
+                self.noise_test_stream.stop()
+                self.noise_test_stream.close()
             except Exception:
                 pass
-            self.test_stream = None
-        self.test_btn.config(text="Test")
+            self.noise_test_stream = None
+        self.noise_test_btn.config(text="Test")
         # Reset level meter
-        if self.level_canvas:
-            self.level_canvas.coords(self.level_bar, 0, 0, 0, 16)
+        if self.noise_level_canvas:
+            self.noise_level_canvas.coords(self.noise_level_bar, 0, 0, 0, 16)
 
     def save(self):
         """Save settings and close."""
@@ -669,6 +1216,16 @@ class SettingsWindow:
             "input_device": device_info,
             "auto_paste": self.autopaste_var.get(),
             "start_with_windows": self.startup_var.get(),
+            # GPU/CUDA settings
+            "processing_mode": self.get_processing_mode(),
+            # Noise gate settings
+            "noise_gate_enabled": self.noise_gate_var.get(),
+            "noise_gate_threshold_db": self.noise_threshold_var.get(),
+            # Audio feedback settings
+            "audio_feedback_volume": self.volume_var.get(),
+            "sound_processing": self.sound_processing_var.get(),
+            "sound_success": self.sound_success_var.get(),
+            "sound_error": self.sound_error_var.get(),
             # Text processing settings
             "voice_commands_enabled": self.voice_commands_var.get(),
             "scratch_that_enabled": self.scratch_that_var.get(),
@@ -680,7 +1237,9 @@ class SettingsWindow:
             # Preview window settings
             "preview_enabled": self.preview_enabled_var.get(),
             "preview_position": self.preview_position_var.get(),
-            "preview_auto_hide_delay": preview_delay
+            "preview_auto_hide_delay": preview_delay,
+            "preview_theme": self.preview_theme_var.get(),
+            "preview_font_size": self.preview_font_size_var.get()
         }
 
         config.save_config(new_config)
@@ -708,6 +1267,17 @@ class SettingsWindow:
         self.silence_var.set(str(defaults["silence_duration_sec"]))
         self.feedback_var.set(defaults["audio_feedback"])
         self.autopaste_var.set(defaults["auto_paste"])
+        # Reset GPU settings
+        default_mode = defaults["processing_mode"]
+        self.processing_combo.set(config.PROCESSING_MODE_LABELS.get(default_mode, "Auto"))
+        # Reset noise gate settings
+        self.noise_gate_var.set(defaults["noise_gate_enabled"])
+        self.noise_threshold_var.set(defaults["noise_gate_threshold_db"])
+        # Reset audio feedback settings
+        self.sound_processing_var.set(defaults["sound_processing"])
+        self.sound_success_var.set(defaults["sound_success"])
+        self.sound_error_var.set(defaults["sound_error"])
+        self.volume_var.set(defaults["audio_feedback_volume"])
         # Reset text processing settings
         self.voice_commands_var.set(defaults["voice_commands_enabled"])
         self.scratch_that_var.set(defaults["scratch_that_enabled"])
@@ -721,6 +1291,8 @@ class SettingsWindow:
         self.preview_enabled_var.set(defaults["preview_enabled"])
         self.preview_position_var.set(defaults["preview_position"])
         self.preview_delay_var.set(str(defaults["preview_auto_hide_delay"]))
+        self.preview_theme_var.set(defaults["preview_theme"])
+        self.preview_font_size_var.set(defaults["preview_font_size"])
         # Reset device to System Default
         self.refresh_devices()
         # Update UI
@@ -864,10 +1436,31 @@ class SettingsWindow:
             self.custom_commands.pop(idx)
             self._refresh_cmd_listbox()
 
+    def _refresh_history(self):
+        """Refresh the history listbox from disk."""
+        self.history_listbox.delete(0, tk.END)
+        entries = text_processor.TranscriptionHistory.load_from_disk()
+        # Show newest first (entries are stored oldest first)
+        for entry in reversed(entries):
+            text = entry.get("text", "")
+            # Truncate long entries for display
+            display = text[:80] + "..." if len(text) > 80 else text
+            # Replace newlines with spaces for single-line display
+            display = display.replace("\n", " ")
+            self.history_listbox.insert(tk.END, display)
+        if not entries:
+            self.history_listbox.insert(tk.END, "(No history yet)")
+
+    def _clear_history(self):
+        """Clear all history."""
+        if messagebox.askyesno("Clear History", "Clear all transcription history?"):
+            text_processor.TranscriptionHistory.clear_on_disk()
+            self._refresh_history()
+
     def close(self):
         """Close the window."""
         # Stop any running test
-        self.stop_test()
+        self.stop_noise_test()
         if self.window:
             self.window.destroy()
             self.window = None

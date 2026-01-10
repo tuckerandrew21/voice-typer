@@ -8,7 +8,9 @@ import threading
 import time
 import io
 import wave
+import array
 import winsound
+import argparse
 import numpy as np
 import sounddevice as sd
 from pynput import keyboard
@@ -19,6 +21,51 @@ import config
 import text_processor
 import stats
 import preview_window
+from logger import log
+
+
+def setup_nvidia_dll_path():
+    """Preload NVIDIA CUDA DLLs on Windows.
+
+    This is required because pip-installed nvidia-cublas-cu12 and nvidia-cudnn-cu12
+    place DLLs in site-packages, which isn't in the system DLL search path.
+
+    We preload the DLLs using ctypes before importing ctranslate2/faster_whisper
+    so they're already in memory when needed.
+    """
+    if sys.platform != "win32":
+        return
+
+    import ctypes
+
+    # Find the site-packages directory
+    site_packages = None
+    for path in sys.path:
+        if "site-packages" in path and os.path.exists(path):
+            site_packages = path
+            break
+
+    if not site_packages:
+        return
+
+    # NVIDIA DLLs to preload (order matters for dependencies)
+    dlls_to_load = [
+        ("nvidia", "cublas", "bin", "cublas64_12.dll"),
+        ("nvidia", "cublas", "bin", "cublasLt64_12.dll"),
+        ("nvidia", "cudnn", "bin", "cudnn64_9.dll"),
+    ]
+
+    for parts in dlls_to_load:
+        dll_path = os.path.join(site_packages, *parts)
+        if os.path.exists(dll_path):
+            try:
+                ctypes.WinDLL(dll_path)
+            except OSError:
+                pass  # DLL may already be loaded or have missing dependencies
+
+
+# Set up NVIDIA DLL paths before importing faster-whisper
+setup_nvidia_dll_path()
 
 # Global state
 app_config = None
@@ -38,9 +85,17 @@ transcription_history = text_processor.TranscriptionHistory()
 # Audio feedback sounds
 start_sound = None
 stop_sound = None
+processing_sound = None
+success_sound = None
+error_sound = None
+command_sound = None
 
 # Silence detection state
 silence_start_time = None
+
+# Recording duration tracking
+recording_start_time = None
+last_duration_update = 0
 
 # Status icons
 icon_ready = None
@@ -98,24 +153,211 @@ def generate_click_sound(frequency=800, duration_ms=50, volume=0.3):
     return buffer.getvalue()
 
 
+def generate_two_tone_sound(freq1=400, freq2=600, duration_ms=100, volume=0.3):
+    """Generate a two-tone ascending sound as WAV bytes."""
+    sample_rate = 44100
+    num_samples = int(sample_rate * duration_ms / 1000)
+    half_samples = num_samples // 2
+
+    t1 = np.linspace(0, duration_ms / 2000, half_samples, dtype=np.float32)
+    t2 = np.linspace(0, duration_ms / 2000, num_samples - half_samples, dtype=np.float32)
+
+    # First tone then second tone
+    wave1 = np.sin(2 * np.pi * freq1 * t1) * volume
+    wave2 = np.sin(2 * np.pi * freq2 * t2) * volume
+    wave_data = np.concatenate([wave1, wave2])
+
+    # Apply fade envelope
+    fade_samples = int(num_samples * 0.1)
+    if fade_samples > 0:
+        wave_data[:fade_samples] *= np.linspace(0, 1, fade_samples)
+        wave_data[-fade_samples:] *= np.linspace(1, 0, fade_samples)
+
+    # Convert to 16-bit PCM
+    pcm_data = (wave_data * 32767).astype(np.int16)
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data.tobytes())
+
+    return buffer.getvalue()
+
+
+def generate_chime_sound(frequency=800, duration_ms=150, volume=0.3):
+    """Generate a pleasant chime sound with harmonics as WAV bytes."""
+    sample_rate = 44100
+    num_samples = int(sample_rate * duration_ms / 1000)
+
+    t = np.linspace(0, duration_ms / 1000, num_samples, dtype=np.float32)
+    # Main frequency plus harmonics for richer sound
+    wave_data = (np.sin(2 * np.pi * frequency * t) * 0.6 +
+                 np.sin(2 * np.pi * frequency * 2 * t) * 0.25 +
+                 np.sin(2 * np.pi * frequency * 3 * t) * 0.15) * volume
+
+    # Apply longer fade for chime effect
+    fade_in = int(num_samples * 0.05)
+    fade_out = int(num_samples * 0.4)
+    if fade_in > 0:
+        wave_data[:fade_in] *= np.linspace(0, 1, fade_in)
+    if fade_out > 0:
+        wave_data[-fade_out:] *= np.linspace(1, 0, fade_out)
+
+    pcm_data = (wave_data * 32767).astype(np.int16)
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data.tobytes())
+
+    return buffer.getvalue()
+
+
+def generate_double_beep_sound(frequency=900, duration_ms=40, gap_ms=30, volume=0.3):
+    """Generate a quick double-beep sound for command confirmation."""
+    sample_rate = 44100
+    beep_samples = int(sample_rate * duration_ms / 1000)
+    gap_samples = int(sample_rate * gap_ms / 1000)
+
+    t = np.linspace(0, duration_ms / 1000, beep_samples, dtype=np.float32)
+    beep = np.sin(2 * np.pi * frequency * t) * volume
+
+    # Quick fade to avoid clicks
+    fade = int(beep_samples * 0.15)
+    if fade > 0:
+        beep[:fade] *= np.linspace(0, 1, fade)
+        beep[-fade:] *= np.linspace(1, 0, fade)
+
+    # Two beeps with gap
+    gap = np.zeros(gap_samples, dtype=np.float32)
+    wave_data = np.concatenate([beep, gap, beep])
+
+    pcm_data = (wave_data * 32767).astype(np.int16)
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data.tobytes())
+
+    return buffer.getvalue()
+
+
+def generate_error_buzz_sound(freq_start=400, freq_end=200, duration_ms=120, volume=0.3):
+    """Generate a descending buzz sound for errors (clearly 'bad')."""
+    sample_rate = 44100
+    num_samples = int(sample_rate * duration_ms / 1000)
+
+    t = np.linspace(0, duration_ms / 1000, num_samples, dtype=np.float32)
+    # Descending frequency sweep
+    freq = np.linspace(freq_start, freq_end, num_samples)
+    wave_data = np.sin(2 * np.pi * freq * t) * volume
+
+    # Add slight buzz with second harmonic
+    wave_data += np.sin(2 * np.pi * freq * 2 * t) * volume * 0.2
+
+    # Fade envelope
+    fade = int(num_samples * 0.1)
+    if fade > 0:
+        wave_data[:fade] *= np.linspace(0, 1, fade)
+        wave_data[-fade:] *= np.linspace(1, 0, fade)
+
+    pcm_data = (wave_data * 32767).astype(np.int16)
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data.tobytes())
+
+    return buffer.getvalue()
+
+
+def apply_volume_to_wav(wav_data, volume):
+    """Apply volume scaling to WAV bytes.
+
+    Args:
+        wav_data: WAV file as bytes
+        volume: Volume multiplier (0.0 to 1.0)
+
+    Returns:
+        New WAV bytes with volume applied
+    """
+    if wav_data is None or volume == 1.0:
+        return wav_data
+
+    # Read the WAV data
+    wav_buffer = io.BytesIO(wav_data)
+    with wave.open(wav_buffer, 'rb') as wav_in:
+        params = wav_in.getparams()
+        frames = wav_in.readframes(params.nframes)
+
+    # Scale the samples (assuming 16-bit audio)
+    samples = array.array('h', frames)
+    for i in range(len(samples)):
+        samples[i] = int(samples[i] * volume)
+
+    # Write back to WAV
+    output = io.BytesIO()
+    with wave.open(output, 'wb') as wav_out:
+        wav_out.setparams(params)
+        wav_out.writeframes(samples.tobytes())
+
+    return output.getvalue()
+
+
 def init_sounds():
-    """Initialize audio feedback sounds at startup."""
-    global start_sound, stop_sound
+    """Initialize audio feedback sounds at full volume (volume applied at playback)."""
+    global start_sound, stop_sound, processing_sound, success_sound, error_sound, command_sound
     try:
-        start_sound = generate_click_sound(frequency=1000, duration_ms=50)
-        stop_sound = generate_click_sound(frequency=600, duration_ms=80)
+        # Generate reference sounds at full volume - volume is applied at playback time
+        # Each sound is designed to be distinct:
+        # - start: high pitch click (1200Hz) - "listening"
+        # - stop: lower pitch click (500Hz) - "got it"
+        # - processing: ascending two-tone - "thinking"
+        # - success: pleasant chime - "done"
+        # - error: descending buzz - "problem"
+        # - command: quick double-beep - "action triggered"
+        start_sound = generate_click_sound(frequency=1200, duration_ms=40, volume=1.0)
+        stop_sound = generate_click_sound(frequency=500, duration_ms=60, volume=1.0)
+        processing_sound = generate_two_tone_sound(freq1=400, freq2=600, duration_ms=100, volume=1.0)
+        success_sound = generate_chime_sound(frequency=800, duration_ms=150, volume=1.0)
+        error_sound = generate_error_buzz_sound(freq_start=400, freq_end=200, duration_ms=120, volume=1.0)
+        command_sound = generate_double_beep_sound(frequency=900, duration_ms=40, gap_ms=30, volume=1.0)
     except Exception as e:
-        print(f"Warning: Could not initialize sounds: {e}", flush=True)
-        start_sound = stop_sound = None
+        log.warning(f"Could not initialize sounds: {e}")
+        start_sound = stop_sound = processing_sound = success_sound = error_sound = command_sound = None
 
 
-def play_sound(sound_data):
-    """Play a sound asynchronously (non-blocking)."""
+def play_sound(sound_data, sound_type=None):
+    """Play a sound asynchronously (non-blocking).
+
+    Args:
+        sound_data: WAV bytes to play
+        sound_type: Optional type ('processing', 'success', 'error') to check specific setting
+    """
     if not app_config.get("audio_feedback", True):
         return
+
+    # Check specific sound type setting if provided
+    if sound_type:
+        setting_key = f"sound_{sound_type}"
+        if not app_config.get(setting_key, True):
+            return
+
     if sound_data:
+        # Read current volume from config file (hot reload)
+        current_volume = config.load_config().get("audio_feedback_volume", 0.3)
+        scaled_sound = apply_volume_to_wav(sound_data, current_volume)
+
         threading.Thread(
-            target=lambda: winsound.PlaySound(sound_data, winsound.SND_MEMORY),
+            target=lambda: winsound.PlaySound(scaled_sound, winsound.SND_MEMORY),
             daemon=True
         ).start()
 
@@ -140,6 +382,53 @@ def update_tray_icon(recording=False):
         tray_icon.icon = icon_recording if recording else icon_ready
 
 
+def check_cuda_available():
+    """Check if CUDA is available for GPU acceleration."""
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        # torch not installed, try ctranslate2 directly
+        try:
+            import ctranslate2
+            # ctranslate2 API requires device argument
+            cuda_types = ctranslate2.get_supported_compute_types("cuda")
+            return len(cuda_types) > 0
+        except (ImportError, Exception):
+            return False
+
+
+def get_device_and_compute_type():
+    """Determine device and compute type based on processing_mode config."""
+    processing_mode = app_config.get("processing_mode", "auto")
+    mode_config = config.PROCESSING_MODE_MAP.get(processing_mode, config.PROCESSING_MODE_MAP["auto"])
+
+    device_setting = mode_config["device"]
+    compute_type_setting = mode_config["compute_type"]
+
+    cuda_available = check_cuda_available()
+
+    # Determine actual device
+    if device_setting == "auto":
+        device = "cuda" if cuda_available else "cpu"
+    elif device_setting == "cuda":
+        if cuda_available:
+            device = "cuda"
+        else:
+            log.warning("GPU mode requested but CUDA not available. Falling back to CPU.")
+            device = "cpu"
+    else:
+        device = "cpu"
+
+    # Determine compute type (CPU only supports int8)
+    if device == "cpu":
+        compute_type = "int8"
+    else:
+        compute_type = compute_type_setting
+
+    return device, compute_type
+
+
 def load_model(model_size=None):
     """Load or reload the Whisper model."""
     global model, model_ready, model_loading
@@ -153,18 +442,24 @@ def load_model(model_size=None):
     if tray_icon:
         tray_icon.title = f"MurmurTone - Loading {model_size}..."
 
-    print(f"Loading Whisper model ({model_size})...", flush=True)
+    log.info(f"Loading Whisper model ({model_size})...")
     from faster_whisper import WhisperModel
+
+    # Determine device and compute type
+    device, compute_type = get_device_and_compute_type()
+    log.info(f"Using device: {device}, compute type: {compute_type}")
 
     # Use bundled model if available, otherwise download from HuggingFace
     model_path = get_model_path(model_size)
-    model = WhisperModel(model_path, device="cpu", compute_type="int8")
+    model = WhisperModel(model_path, device=device, compute_type=compute_type)
     model_ready = True
     model_loading = False
-    print("Model loaded! Ready.", flush=True)
+    log.info("Model loaded! Ready.")
 
     if tray_icon:
-        tray_icon.title = "MurmurTone - Ready"
+        hotkey_str = config.hotkey_to_string(app_config["hotkey"])
+        action = "Press" if app_config.get("recording_mode") == "auto_stop" else "Hold"
+        tray_icon.title = f"MurmurTone - Ready\n{action} {hotkey_str} to record"
 
 
 def calculate_rms(audio_chunk):
@@ -188,30 +483,46 @@ def auto_stop_recording():
     if not is_recording:
         return
 
-    print(">> Auto-stopped (silence detected)", flush=True)
+    log.info("Auto-stopped (silence detected)")
     silence_start_time = None
     stop_recording()
 
 
 def audio_callback(indata, frames, time_info, status):
-    global audio_data, is_recording, silence_start_time
+    global audio_data, is_recording, silence_start_time, last_duration_update
 
     if not is_recording:
-        return
-
-    audio_data.append(indata.copy())
-
-    # Only check silence in auto_stop mode
-    if app_config.get("recording_mode") != "auto_stop":
         return
 
     # Calculate current audio level
     rms = calculate_rms(indata)
     db = rms_to_db(rms)
 
-    threshold_db = -40  # dB threshold for silence
-    silence_duration = app_config.get("silence_duration_sec", 2.0)
+    # Get noise gate settings
+    noise_gate_enabled = app_config.get("noise_gate_enabled", True)
+    threshold_db = app_config.get("noise_gate_threshold_db", -40)
 
+    # Apply noise gate - skip frames below threshold
+    if noise_gate_enabled and db < threshold_db:
+        # Don't record this frame - it's below the noise gate
+        pass
+    else:
+        # Record this frame
+        audio_data.append(indata.copy())
+
+    # Update preview window with duration once per second
+    if recording_start_time is not None and app_config.get("preview_enabled", True):
+        elapsed = time.time() - recording_start_time
+        elapsed_int = int(elapsed)
+        if elapsed_int > last_duration_update:
+            last_duration_update = elapsed_int
+            preview_window.show_recording(duration_seconds=elapsed)
+
+    # Only check silence-based auto_stop in auto_stop mode
+    if app_config.get("recording_mode") != "auto_stop":
+        return
+
+    silence_duration = app_config.get("silence_duration_sec", 2.0)
     current_time = time.time()
 
     if db < threshold_db:
@@ -228,9 +539,9 @@ def audio_callback(indata, frames, time_info, status):
 
 
 def start_recording():
-    global is_recording, audio_data, stream, silence_start_time
+    global is_recording, audio_data, stream, silence_start_time, recording_start_time, last_duration_update
     if not model_ready:
-        print("Model still loading, please wait...", flush=True)
+        log.info("Model still loading, please wait...")
         return
     if is_recording:
         return
@@ -238,11 +549,15 @@ def start_recording():
     play_sound(start_sound)
     update_tray_icon(recording=True)
 
+    # Track recording start time for duration display
+    recording_start_time = time.time()
+    last_duration_update = 0
+
     # Show preview window if enabled
     if app_config.get("preview_enabled", True):
-        preview_window.show_recording()
+        preview_window.show_recording(duration_seconds=0)
 
-    print("\n>> Recording...", flush=True)
+    log.info("Recording...")
     is_recording = True
     audio_data = []
     silence_start_time = None
@@ -270,12 +585,13 @@ def stop_recording():
         stream = None
 
     if not audio_data:
-        print("No audio.", flush=True)
+        log.debug("No audio captured")
         if app_config.get("preview_enabled", True):
             preview_window.hide()
         return
 
-    print(">> Transcribing...", flush=True)
+    log.info("Transcribing...")
+    play_sound(processing_sound, sound_type="processing")
     if app_config.get("preview_enabled", True):
         preview_window.show_transcribing()
     audio = np.concatenate(audio_data, axis=0).flatten()
@@ -306,7 +622,7 @@ def stop_recording():
 
     # Handle "scratch that" - delete previous transcription
     if should_scratch and scratch_length > 0:
-        print(f">> Scratching last {scratch_length} characters...", flush=True)
+        log.info(f"Scratching last {scratch_length} characters")
         if app_config.get("preview_enabled", True):
             preview_window.hide()
         time.sleep(0.1)
@@ -315,7 +631,7 @@ def stop_recording():
             keyboard_controller.release(Key.backspace)
         # Don't output anything else for this transcription
         hotkey_str = config.hotkey_to_string(app_config["hotkey"])
-        print(f"\nReady. Press {hotkey_str}.", flush=True)
+        log.info(f"Ready. Press {hotkey_str}.")
         return
 
     if text:
@@ -340,11 +656,11 @@ def stop_recording():
             root.update()
             root.destroy()
         except Exception as e:
-            print(f">> Clipboard error: {e}", flush=True)
+            log.error(f"Clipboard error: {e}")
 
         # Auto-paste if enabled
         if app_config.get("auto_paste", True):
-            print(f">> Pasting: {text}", flush=True)
+            log.info(f"Pasting: {text}")
             time.sleep(0.3)  # Wait for focus to return after clipboard
             keyboard_controller.press(Key.ctrl_l)
             time.sleep(0.05)
@@ -353,18 +669,22 @@ def stop_recording():
             time.sleep(0.05)
             keyboard_controller.release(Key.ctrl_l)
         else:
-            print(f">> Copied to clipboard: {text}", flush=True)
+            log.info(f"Copied to clipboard: {text}")
+        # Success sound after text output
+        play_sound(success_sound, sound_type="success")
     elif actions_executed:
-        print(f">> Action executed: {', '.join(actions)}", flush=True)
+        log.info(f"Action executed: {', '.join(actions)}")
+        play_sound(command_sound, sound_type="command")
         if app_config.get("preview_enabled", True):
             preview_window.hide()
     else:
-        print(">> No speech detected.", flush=True)
+        log.info("No speech detected")
+        play_sound(error_sound, sound_type="error")
         if app_config.get("preview_enabled", True):
             preview_window.hide()
 
     hotkey_str = config.hotkey_to_string(app_config["hotkey"])
-    print(f"\nReady. Press {hotkey_str}.", flush=True)
+    log.info(f"Ready. Press {hotkey_str}.")
 
 
 def check_hotkey():
@@ -433,7 +753,7 @@ def get_icon_path():
 
 
 def on_quit(icon, item):
-    print("\nExiting...", flush=True)
+    log.info("Exiting...")
     icon.stop()
     os._exit(0)
 
@@ -456,9 +776,16 @@ def on_tray_click(icon, item=None):
 
 
 def open_settings_window():
-    """Open the settings GUI."""
-    import settings_gui
-    settings_gui.open_settings(app_config, on_settings_saved)
+    """Open the settings GUI as a separate process.
+
+    pystray runs callbacks from background threads, but tkinter requires
+    the main thread. Running settings as a subprocess gives it its own
+    main thread, avoiding the 'main thread is not in main loop' error.
+    """
+    import subprocess
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    settings_script = os.path.join(app_dir, "settings_gui.py")
+    subprocess.Popen([sys.executable, settings_script])
 
 
 def on_settings_saved(new_config):
@@ -467,23 +794,40 @@ def on_settings_saved(new_config):
 
     old_model = app_config.get("model_size")
     new_model = new_config.get("model_size")
+    old_mode = app_config.get("processing_mode")
+    new_mode = new_config.get("processing_mode")
 
     app_config = new_config
 
-    # Reload model if changed
-    if old_model != new_model:
-        print(f"Model changed from {old_model} to {new_model}, reloading...", flush=True)
+    # Reload model if model or processing mode changed
+    model_changed = old_model != new_model
+    mode_changed = old_mode != new_mode
+
+    if model_changed or mode_changed:
+        reason = []
+        if model_changed:
+            reason.append(f"model: {old_model} -> {new_model}")
+        if mode_changed:
+            reason.append(f"mode: {old_mode} -> {new_mode}")
+        log.info(f"Reloading model ({', '.join(reason)})...")
         threading.Thread(target=load_model, args=(new_model,), daemon=True).start()
 
     # Update preview window configuration
     preview_window.configure(
         enabled=app_config.get("preview_enabled", True),
         position=app_config.get("preview_position", "bottom-right"),
-        auto_hide_delay=app_config.get("preview_auto_hide_delay", 2.0)
+        auto_hide_delay=app_config.get("preview_auto_hide_delay", 2.0),
+        theme=app_config.get("preview_theme", "dark"),
+        font_size=app_config.get("preview_font_size", 11)
     )
 
     hotkey_str = config.hotkey_to_string(app_config["hotkey"])
-    print(f"Settings saved. Hotkey: {hotkey_str}", flush=True)
+    log.info(f"Settings saved. Hotkey: {hotkey_str}")
+
+    # Update tray tooltip with new hotkey
+    if tray_icon and model_ready:
+        action = "Press" if app_config.get("recording_mode") == "auto_stop" else "Hold"
+        tray_icon.title = f"MurmurTone - Ready\n{action} {hotkey_str} to record"
 
 
 def get_status_text(item):
@@ -515,8 +859,71 @@ def run_keyboard_listener():
         listener.join()
 
 
+def check_restart_signal():
+    """Check for restart signal from settings and exit if found."""
+    import time
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    signal_file = os.path.join(app_dir, ".restart_signal")
+
+    while True:
+        time.sleep(1)  # Check every second
+        if os.path.exists(signal_file):
+            try:
+                os.remove(signal_file)
+            except Exception:
+                pass
+            log.info("Restart signal received, exiting...")
+            if tray_icon:
+                tray_icon.stop()
+            break
+
+
+# Track config file modification time for hot-reload
+_config_last_mtime = 0
+
+
+def watch_config_file():
+    """Watch config file for changes and hot-reload settings."""
+    import time
+    global _config_last_mtime
+
+    config_path = config.get_config_path()
+
+    # Initialize with current mtime
+    try:
+        _config_last_mtime = os.path.getmtime(config_path)
+    except OSError:
+        _config_last_mtime = 0
+
+    while True:
+        time.sleep(1)  # Check every second
+        try:
+            current_mtime = os.path.getmtime(config_path)
+            if current_mtime > _config_last_mtime:
+                _config_last_mtime = current_mtime
+                log.info("Config file changed, reloading settings...")
+                new_config = config.load_config()
+                on_settings_saved(new_config)
+        except OSError:
+            pass  # File doesn't exist or not accessible
+
+
 def main():
     global tray_icon, app_config
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="MurmurTone - Voice to text")
+    parser.add_argument("--settings", action="store_true", help="Open settings on startup")
+    args = parser.parse_args()
+
+    # Clean up any stale restart signal from previous runs
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    signal_file = os.path.join(app_dir, ".restart_signal")
+    if os.path.exists(signal_file):
+        try:
+            os.remove(signal_file)
+        except Exception:
+            pass
 
     # Load configuration
     app_config = config.load_config()
@@ -532,7 +939,9 @@ def main():
     preview_window.configure(
         enabled=app_config.get("preview_enabled", True),
         position=app_config.get("preview_position", "bottom-right"),
-        auto_hide_delay=app_config.get("preview_auto_hide_delay", 2.0)
+        auto_hide_delay=app_config.get("preview_auto_hide_delay", 2.0),
+        theme=app_config.get("preview_theme", "dark"),
+        font_size=app_config.get("preview_font_size", 11)
     )
 
     # Start keyboard listener
@@ -543,10 +952,22 @@ def main():
     model_thread = threading.Thread(target=load_model, daemon=True)
     model_thread.start()
 
+    # Start restart signal watcher
+    restart_thread = threading.Thread(target=check_restart_signal, daemon=True)
+    restart_thread.start()
+
+    # Start config file watcher for hot-reload
+    config_watcher_thread = threading.Thread(target=watch_config_file, daemon=True)
+    config_watcher_thread.start()
+
+    # Open settings on startup if requested
+    if args.settings:
+        threading.Thread(target=open_settings_window, daemon=True).start()
+
     # Create and run tray icon (blocks)
     tray_icon = create_tray_icon()
-    print("System tray icon started.", flush=True)
-    print(f"Press {hotkey_str} to record (after model loads).", flush=True)
+    log.info("System tray icon started.")
+    log.info(f"Press {hotkey_str} to record (after model loads).")
     tray_icon.run()
 
 
