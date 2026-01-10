@@ -776,6 +776,73 @@ class SettingsWindow:
         ttk.Button(cmd_btn_frame, text="Add", width=6, command=self.add_cmd_entry).pack(pady=1)
         ttk.Button(cmd_btn_frame, text="Remove", width=6, command=self.remove_cmd_entry).pack(pady=1)
 
+        # AI Text Cleanup section
+        row += 1
+        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
+
+        row += 1
+        ai_label_frame = ttk.Frame(main_frame)
+        ai_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(5, 2))
+        ttk.Label(ai_label_frame, text="AI Text Cleanup (Ollama)", font=("", 10, "bold")).pack(side=tk.LEFT)
+        ttk.Label(ai_label_frame, text="🌟 Killer Feature - 100% Offline", font=("", 9), foreground="green").pack(side=tk.LEFT, padx=(5, 0))
+        ai_help = ttk.Label(ai_label_frame, text="?", font=("", 9, "bold"),
+                           foreground="#888888", cursor="question_arrow")
+        ai_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(ai_help, "Use local AI (Ollama) to improve transcriptions:\n\n"
+                        "• Fix grammar and spelling errors\n"
+                        "• Adjust formality level\n"
+                        "• Remove redundancy\n\n"
+                        "Requires Ollama to be installed and running.\n"
+                        "Download from: https://ollama.ai/")
+
+        row += 1
+        self.ai_cleanup_var = tk.BooleanVar(value=self.config.get("ai_cleanup_enabled", False))
+        ai_check = ttk.Checkbutton(main_frame, text="Enable AI text cleanup",
+                                   variable=self.ai_cleanup_var,
+                                   command=self.on_ai_cleanup_toggle)
+        ai_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        # Ollama status indicator
+        row += 1
+        self.ollama_status_label = ttk.Label(main_frame, text="Status: Checking...", foreground="gray")
+        self.ollama_status_label.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        # Mode selector
+        row += 1
+        ttk.Label(main_frame, text="Cleanup Mode:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.ai_mode_var = tk.StringVar(value=self.config.get("ai_cleanup_mode", "grammar"))
+        mode_frame = ttk.Frame(main_frame)
+        mode_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
+        ttk.Radiobutton(mode_frame, text="Grammar only", variable=self.ai_mode_var, value="grammar").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(mode_frame, text="Formality only", variable=self.ai_mode_var, value="formality").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(mode_frame, text="Both", variable=self.ai_mode_var, value="both").pack(side=tk.LEFT, padx=5)
+
+        # Formality level selector
+        row += 1
+        ttk.Label(main_frame, text="Formality Level:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.ai_formality_var = tk.StringVar(value=self.config.get("ai_formality_level", "professional"))
+        self.ai_formality_combo = ttk.Combobox(main_frame, textvariable=self.ai_formality_var,
+                                              values=["casual", "professional", "formal"],
+                                              state="readonly", width=15)
+        self.ai_formality_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
+
+        # Model selector
+        row += 1
+        ttk.Label(main_frame, text="Ollama Model:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.ai_model_var = tk.StringVar(value=self.config.get("ollama_model", "llama3.2:3b"))
+        self.ai_model_entry = ttk.Entry(main_frame, textvariable=self.ai_model_var, width=20)
+        self.ai_model_entry.grid(row=row, column=1, sticky=tk.W, pady=5)
+
+        # Test connection button
+        row += 1
+        self.test_ollama_btn = ttk.Button(main_frame, text="Test Ollama Connection", command=self.test_ollama_connection)
+        self.test_ollama_btn.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        # Update initial state
+        self.on_ai_cleanup_toggle()
+        # Check Ollama status in background
+        threading.Thread(target=self.check_ollama_status_bg, daemon=True).start()
+
         # Separator before history
         row += 1
         ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
@@ -1330,6 +1397,12 @@ class SettingsWindow:
             "custom_dictionary": self.custom_dictionary,
             "custom_vocabulary": self.custom_vocabulary,
             "custom_commands": self.custom_commands,
+            # AI cleanup settings
+            "ai_cleanup_enabled": self.ai_cleanup_var.get(),
+            "ai_cleanup_mode": self.ai_mode_var.get(),
+            "ai_formality_level": self.ai_formality_var.get(),
+            "ollama_model": self.ai_model_var.get(),
+            "ollama_url": self.config.get("ollama_url", "http://localhost:11434"),  # Preserve URL
             # Preview window settings
             "preview_enabled": self.preview_enabled_var.get(),
             "preview_position": self.preview_position_var.get(),
@@ -1526,6 +1599,60 @@ class SettingsWindow:
             idx = selection[0]
             self.custom_vocabulary.pop(idx)
             self._refresh_vocab_listbox()
+
+    def on_ai_cleanup_toggle(self):
+        """Update UI when AI cleanup is toggled."""
+        enabled = self.ai_cleanup_var.get()
+        state = tk.NORMAL if enabled else tk.DISABLED
+
+        # Enable/disable related controls
+        for widget in [self.ai_formality_combo, self.ai_model_entry, self.test_ollama_btn]:
+            widget.config(state=state if widget != self.ai_formality_combo else ("readonly" if enabled else tk.DISABLED))
+
+    def check_ollama_status_bg(self):
+        """Check Ollama status in background thread."""
+        import ai_cleanup
+        ollama_url = self.config.get("ollama_url", "http://localhost:11434")
+
+        try:
+            if ai_cleanup.check_ollama_available(ollama_url):
+                self.ollama_status_label.config(text="Status: ✓ Ollama running", foreground="green")
+            else:
+                self.ollama_status_label.config(text="Status: ✗ Ollama not running", foreground="red")
+        except Exception:
+            self.ollama_status_label.config(text="Status: ✗ Error checking Ollama", foreground="red")
+
+    def test_ollama_connection(self):
+        """Test Ollama connection and show result."""
+        import ai_cleanup
+
+        ollama_url = self.config.get("ollama_url", "http://localhost:11434")
+        model = self.ai_model_var.get()
+
+        # Show testing message
+        self.ollama_status_label.config(text="Status: Testing...", foreground="orange")
+        self.test_ollama_btn.config(state=tk.DISABLED)
+        self.window.update()
+
+        def do_test():
+            success, message = ai_cleanup.test_ollama_connection(model, ollama_url)
+
+            # Update UI on main thread
+            if success:
+                self.ollama_status_label.config(text=f"Status: ✓ {message}", foreground="green")
+            else:
+                self.ollama_status_label.config(text=f"Status: ✗ {message}", foreground="red")
+
+            self.test_ollama_btn.config(state=tk.NORMAL)
+
+            # Show messagebox with result
+            if success:
+                messagebox.showinfo("Ollama Connection Test", message)
+            else:
+                messagebox.showerror("Ollama Connection Test", message)
+
+        # Run test in background thread
+        threading.Thread(target=do_test, daemon=True).start()
 
     def _refresh_cmd_listbox(self):
         """Refresh the custom commands listbox display."""

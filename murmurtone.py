@@ -632,6 +632,27 @@ def stop_recording():
         raw_text, app_config, transcription_history
     )
 
+    # Optional AI cleanup (Ollama integration)
+    if app_config.get("ai_cleanup_enabled") and text:
+        import ai_cleanup
+        ollama_url = app_config.get("ollama_url", "http://localhost:11434")
+        if ai_cleanup.check_ollama_available(ollama_url):
+            try:
+                cleaned = ai_cleanup.cleanup_text(
+                    text,
+                    mode=app_config.get("ai_cleanup_mode", "grammar"),
+                    formality_level=app_config.get("ai_formality_level", "professional"),
+                    model=app_config.get("ollama_model", "llama3.2:3b"),
+                    url=ollama_url,
+                    timeout=30
+                )
+                if cleaned:
+                    text = cleaned
+                    log.info("AI cleanup applied")
+            except Exception as e:
+                log.warning(f"AI cleanup failed: {e}")
+                # Continue with original text
+
     # Execute any action commands (select all, undo, redo)
     actions_executed = False
     for action in actions:

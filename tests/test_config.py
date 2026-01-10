@@ -419,3 +419,70 @@ class TestFileTranscriptionConfig:
         loaded = config.load_config()
         assert loaded["file_transcription_save_location"] == "/custom/path"
         assert loaded["file_transcription_auto_open"] is False
+
+
+class TestAICleanupConfig:
+    """Tests for AI cleanup configuration."""
+
+    def test_ai_cleanup_enabled_default(self):
+        """ai_cleanup_enabled should default to False."""
+        assert config.DEFAULTS["ai_cleanup_enabled"] is False
+
+    def test_ai_cleanup_mode_default(self):
+        """ai_cleanup_mode should default to 'grammar'."""
+        assert config.DEFAULTS["ai_cleanup_mode"] == "grammar"
+
+    def test_ai_formality_level_default(self):
+        """ai_formality_level should default to 'professional'."""
+        assert config.DEFAULTS["ai_formality_level"] == "professional"
+
+    def test_ollama_model_default(self):
+        """ollama_model should have a default value."""
+        assert "ollama_model" in config.DEFAULTS
+        assert config.DEFAULTS["ollama_model"]  # Not empty
+
+    def test_ollama_url_default(self):
+        """ollama_url should default to localhost."""
+        assert config.DEFAULTS["ollama_url"] == "http://localhost:11434"
+
+    def test_ai_cleanup_mode_options_exist(self):
+        """AI_CLEANUP_MODE_OPTIONS should be defined."""
+        assert hasattr(config, "AI_CLEANUP_MODE_OPTIONS")
+        assert len(config.AI_CLEANUP_MODE_OPTIONS) > 0
+
+    def test_ai_cleanup_mode_options_valid(self):
+        """AI cleanup mode options should include expected values."""
+        assert "grammar" in config.AI_CLEANUP_MODE_OPTIONS
+        assert "formality" in config.AI_CLEANUP_MODE_OPTIONS
+        assert "both" in config.AI_CLEANUP_MODE_OPTIONS
+
+    def test_ai_formality_level_options_exist(self):
+        """AI_FORMALITY_LEVEL_OPTIONS should be defined."""
+        assert hasattr(config, "AI_FORMALITY_LEVEL_OPTIONS")
+        assert len(config.AI_FORMALITY_LEVEL_OPTIONS) > 0
+
+    def test_ai_formality_level_options_valid(self):
+        """Formality level options should include expected values."""
+        assert "casual" in config.AI_FORMALITY_LEVEL_OPTIONS
+        assert "professional" in config.AI_FORMALITY_LEVEL_OPTIONS
+        assert "formal" in config.AI_FORMALITY_LEVEL_OPTIONS
+
+    def test_ai_cleanup_config_saved_and_loaded(self, tmp_path, mocker):
+        """AI cleanup settings should persist across save/load."""
+        config_file = tmp_path / "test_config.json"
+        mocker.patch('config.get_config_path', return_value=str(config_file))
+
+        # Save config with AI cleanup enabled
+        test_config = config.DEFAULTS.copy()
+        test_config["ai_cleanup_enabled"] = True
+        test_config["ai_cleanup_mode"] = "both"
+        test_config["ai_formality_level"] = "formal"
+        test_config["ollama_model"] = "mistral:7b"
+        config.save_config(test_config)
+
+        # Load and verify
+        loaded = config.load_config()
+        assert loaded["ai_cleanup_enabled"] is True
+        assert loaded["ai_cleanup_mode"] == "both"
+        assert loaded["ai_formality_level"] == "formal"
+        assert loaded["ollama_model"] == "mistral:7b"

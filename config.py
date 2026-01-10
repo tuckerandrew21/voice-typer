@@ -63,6 +63,12 @@ DEFAULTS = {
     # File transcription
     "file_transcription_save_location": None,  # None = ask each time, or default folder path
     "file_transcription_auto_open": True,  # Open transcription file after completion
+    # AI text cleanup (Ollama integration)
+    "ai_cleanup_enabled": False,  # Enable AI-powered text cleanup
+    "ollama_model": "llama3.2:3b",  # Ollama model to use
+    "ollama_url": "http://localhost:11434",  # Ollama API URL
+    "ai_cleanup_mode": "grammar",  # grammar, formality, or both
+    "ai_formality_level": "professional",  # casual, professional, or formal
 }
 
 # GitHub repo for updates (TODO: update with real URLs)
@@ -132,6 +138,10 @@ PREVIEW_THEMES = {
 }
 PREVIEW_FONT_SIZE_MIN = 8
 PREVIEW_FONT_SIZE_MAX = 18
+
+# AI cleanup options
+AI_CLEANUP_MODE_OPTIONS = ["grammar", "formality", "both"]
+AI_FORMALITY_LEVEL_OPTIONS = ["casual", "professional", "formal"]
 
 
 def get_config_path():
