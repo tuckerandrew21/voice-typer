@@ -720,6 +720,34 @@ class SettingsWindow:
         ttk.Button(dict_btn_frame, text="Add", width=6, command=self.add_dict_entry).pack(pady=1)
         ttk.Button(dict_btn_frame, text="Remove", width=6, command=self.remove_dict_entry).pack(pady=1)
 
+        # Custom Vocabulary section
+        row += 1
+        vocab_label_frame = ttk.Frame(main_frame)
+        vocab_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(10, 2))
+        ttk.Label(vocab_label_frame, text="Custom Vocabulary:").pack(side=tk.LEFT)
+        vocab_help = ttk.Label(vocab_label_frame, text="?", font=("", 9, "bold"),
+                               foreground="#888888", cursor="question_arrow")
+        vocab_help.pack(side=tk.LEFT, padx=5)
+        Tooltip(vocab_help, "Add names, jargon, and acronyms for better recognition:\n\n"
+                           "TensorFlow, Kubernetes, HIPAA\n"
+                           "Dr. Smith, ChatGPT, PyTorch\n"
+                           "GitHub, OpenAI, FastAPI")
+
+        # Vocabulary list
+        row += 1
+        vocab_frame = ttk.Frame(main_frame)
+        vocab_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
+
+        self.vocab_listbox = tk.Listbox(vocab_frame, width=50, height=3, selectmode=tk.SINGLE)
+        self.vocab_listbox.pack(side=tk.LEFT)
+        self.custom_vocabulary = self.config.get("custom_vocabulary", []).copy()
+        self._refresh_vocab_listbox()
+
+        vocab_btn_frame = ttk.Frame(vocab_frame)
+        vocab_btn_frame.pack(side=tk.LEFT, padx=5)
+        ttk.Button(vocab_btn_frame, text="Add", width=6, command=self.add_vocab_entry).pack(pady=1)
+        ttk.Button(vocab_btn_frame, text="Remove", width=6, command=self.remove_vocab_entry).pack(pady=1)
+
         # Custom Commands section
         row += 1
         cmd_label_frame = ttk.Frame(main_frame)
@@ -1300,6 +1328,7 @@ class SettingsWindow:
             "filler_removal_aggressive": self.filler_aggressive_var.get(),
             "custom_fillers": self.config.get("custom_fillers", []),  # Preserve existing
             "custom_dictionary": self.custom_dictionary,
+            "custom_vocabulary": self.custom_vocabulary,
             "custom_commands": self.custom_commands,
             # Preview window settings
             "preview_enabled": self.preview_enabled_var.get(),
@@ -1360,6 +1389,8 @@ class SettingsWindow:
         self.filler_aggressive_var.set(defaults["filler_removal_aggressive"])
         self.custom_dictionary = []
         self._refresh_dict_listbox()
+        self.custom_vocabulary = []
+        self._refresh_vocab_listbox()
         self.custom_commands = []
         self._refresh_cmd_listbox()
         # Reset preview settings
@@ -1441,6 +1472,60 @@ class SettingsWindow:
             idx = selection[0]
             self.custom_dictionary.pop(idx)
             self._refresh_dict_listbox()
+
+    def _refresh_vocab_listbox(self):
+        """Refresh the vocabulary listbox display."""
+        self.vocab_listbox.delete(0, tk.END)
+        for term in self.custom_vocabulary:
+            self.vocab_listbox.insert(tk.END, term)
+
+    def add_vocab_entry(self):
+        """Show dialog to add a vocabulary term."""
+        dialog = tk.Toplevel(self.window)
+        dialog.title("Add Vocabulary Term")
+        dialog.geometry("350x120")
+        dialog.resizable(False, False)
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        # Center on parent
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 350) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 120) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        frame = ttk.Frame(dialog, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Term (name, jargon, acronym):").grid(row=0, column=0, sticky=tk.W, pady=5)
+        term_var = tk.StringVar()
+        term_entry = ttk.Entry(frame, textvariable=term_var, width=35)
+        term_entry.grid(row=0, column=1, sticky=tk.W, pady=5)
+
+        def do_add():
+            term = term_var.get().strip()
+            if term and term not in self.custom_vocabulary:
+                self.custom_vocabulary.append(term)
+                self._refresh_vocab_listbox()
+                dialog.destroy()
+            elif term in self.custom_vocabulary:
+                messagebox.showinfo("Duplicate", f'"{term}" is already in your vocabulary.')
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=1, column=0, columnspan=2, pady=15)
+        ttk.Button(btn_frame, text="Add", command=do_add).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+        term_entry.focus_set()
+        term_entry.bind('<Return>', lambda e: do_add())
+
+    def remove_vocab_entry(self):
+        """Remove selected vocabulary term."""
+        selection = self.vocab_listbox.curselection()
+        if selection:
+            idx = selection[0]
+            self.custom_vocabulary.pop(idx)
+            self._refresh_vocab_listbox()
 
     def _refresh_cmd_listbox(self):
         """Refresh the custom commands listbox display."""

@@ -609,8 +609,15 @@ def stop_recording():
         if language == "auto":
             language = None
 
-    # Get initial_prompt for punctuation optimization
-    initial_prompt = app_config.get("initial_prompt", "")
+    # Build initial_prompt with custom vocabulary
+    base_prompt = app_config.get("initial_prompt", "")
+    custom_vocab = app_config.get("custom_vocabulary", [])
+    if custom_vocab:
+        # Add custom vocabulary to initial prompt
+        vocab_hint = f" Vocabulary: {', '.join(custom_vocab)}."
+        initial_prompt = base_prompt + vocab_hint
+    else:
+        initial_prompt = base_prompt
 
     # Transcribe/translate with optional initial_prompt
     transcribe_params = {"task": task, "language": language}

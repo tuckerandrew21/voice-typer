@@ -359,3 +359,35 @@ class TestTranslationModeConfig:
         source_lang = config.DEFAULTS["translation_source_language"]
         # Should be 'auto' or a language in LANGUAGE_OPTIONS
         assert source_lang == "auto" or source_lang in config.LANGUAGE_OPTIONS
+
+
+class TestCustomVocabularyConfig:
+    """Tests for custom vocabulary configuration."""
+
+    def test_custom_vocabulary_default_exists(self):
+        """custom_vocabulary should have a default value."""
+        assert "custom_vocabulary" in config.DEFAULTS
+
+    def test_custom_vocabulary_is_list(self):
+        """custom_vocabulary should be a list."""
+        assert isinstance(config.DEFAULTS["custom_vocabulary"], list)
+
+    def test_custom_vocabulary_default_empty(self):
+        """custom_vocabulary should default to empty list."""
+        assert config.DEFAULTS["custom_vocabulary"] == []
+
+    def test_custom_vocabulary_saved_and_loaded(self, tmp_path, mocker):
+        """Custom vocabulary should persist across save/load."""
+        config_file = tmp_path / "test_config.json"
+        mocker.patch('config.get_config_path', return_value=str(config_file))
+
+        # Save config with custom vocabulary
+        test_config = config.DEFAULTS.copy()
+        test_config["custom_vocabulary"] = ["TensorFlow", "Kubernetes", "Dr. Smith"]
+        config.save_config(test_config)
+
+        # Load and verify
+        loaded = config.load_config()
+        assert "TensorFlow" in loaded["custom_vocabulary"]
+        assert "Kubernetes" in loaded["custom_vocabulary"]
+        assert "Dr. Smith" in loaded["custom_vocabulary"]
