@@ -11,6 +11,9 @@ Powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for fast,
 - **System tray app** - Runs quietly in the background
 - **Customizable hotkey** - Set any key combination you want
 - **Multiple models** - Choose between speed (tiny) and accuracy (medium)
+- **GPU acceleration** - Optional CUDA support for faster transcription
+- **Noise gate** - Filter out background noise automatically
+- **Audio feedback** - Distinct sounds for recording, processing, success, and error states
 - **Auto-language detection** - English or auto-detect
 - **Settings GUI** - Easy configuration, no code editing required
 - **Hot-reload** - Change models without restarting
@@ -29,6 +32,20 @@ git clone https://github.com/tuckerandrew21/voice-typer.git
 cd voice-typer
 pip install -r requirements.txt
 ```
+
+### GPU Acceleration (Optional)
+
+For faster transcription with NVIDIA GPUs:
+
+```bash
+pip install -r requirements-gpu.txt
+```
+
+**Requirements:**
+- NVIDIA GPU with CUDA support
+- CUDA 12.x compatible drivers
+
+The app will automatically detect and use your GPU. You can also manually configure the device in Settings.
 
 ## Usage
 
@@ -52,8 +69,11 @@ Right-click the tray icon and select **Settings** to configure:
 | Setting | Options | Description |
 |---------|---------|-------------|
 | Model Size | tiny.en, base.en, small.en, medium.en | Larger = more accurate but slower |
+| Device | auto, cpu, cuda | Use GPU if available, or force CPU/GPU |
+| Compute Type | int8, float16, float32 | float16/32 require GPU |
 | Language | en, auto | English only or auto-detect |
-| Sample Rate | 16000 (default) | Audio recording quality |
+| Noise Gate | On/Off, -60 to -20 dB | Filter out background noise |
+| Audio Feedback | Processing, Success, Error | Individual sound toggles |
 | Hotkey | Any combination | Click "Set Hotkey" and press your keys |
 
 Settings are saved to `settings.json` and persist between sessions.
