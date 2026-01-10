@@ -859,9 +859,105 @@ def on_history(icon, item=None):
                 listbox.delete(0, tk.END)
                 full_entries.clear()
 
+        def export_history():
+            """Export history to file with format selection."""
+            if not entries:
+                tk.messagebox.showinfo("Export History", "No history to export.")
+                return
+
+            # Format selection dialog
+            dialog = tk.Toplevel(root)
+            dialog.title("Export Format")
+            dialog.geometry("300x180")
+            dialog.transient(root)
+            dialog.grab_set()
+
+            ttk.Label(dialog, text="Select export format:", font=("", 10, "bold")).pack(pady=10)
+
+            format_var = tk.StringVar(value="txt")
+            ttk.Radiobutton(dialog, text="Plain Text (.txt)", variable=format_var, value="txt").pack(anchor=tk.W, padx=20)
+            ttk.Radiobutton(dialog, text="CSV with timestamps (.csv)", variable=format_var, value="csv").pack(anchor=tk.W, padx=20)
+            ttk.Radiobutton(dialog, text="JSON with metadata (.json)", variable=format_var, value="json").pack(anchor=tk.W, padx=20)
+
+            result = {"cancelled": True}
+
+            def on_export():
+                result["cancelled"] = False
+                result["format"] = format_var.get()
+                dialog.destroy()
+
+            btn_dialog_frame = ttk.Frame(dialog)
+            btn_dialog_frame.pack(pady=15)
+            ttk.Button(btn_dialog_frame, text="Export", command=on_export).pack(side=tk.LEFT, padx=5)
+            ttk.Button(btn_dialog_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+            dialog.wait_window()
+
+            if result["cancelled"]:
+                return
+
+            # File save dialog
+            from tkinter import filedialog
+            format_ext = result["format"]
+            ext_map = {"txt": ".txt", "csv": ".csv", "json": ".json"}
+            file_types = {
+                "txt": [("Text files", "*.txt"), ("All files", "*.*")],
+                "csv": [("CSV files", "*.csv"), ("All files", "*.*")],
+                "json": [("JSON files", "*.json"), ("All files", "*.*")]
+            }
+
+            filename = filedialog.asksaveasfilename(
+                defaultextension=ext_map[format_ext],
+                filetypes=file_types[format_ext],
+                title="Export History"
+            )
+
+            if not filename:
+                return
+
+            try:
+                if format_ext == "txt":
+                    export_txt(filename, entries)
+                elif format_ext == "csv":
+                    export_csv(filename, entries)
+                elif format_ext == "json":
+                    export_json(filename, entries)
+                tk.messagebox.showinfo("Export Successful", f"History exported to:\n{filename}")
+            except Exception as e:
+                tk.messagebox.showerror("Export Failed", f"Failed to export history:\n{str(e)}")
+
+        def export_txt(filename, entries):
+            """Export history as plain text with timestamps."""
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write("Transcription History\n")
+                f.write("=" * 60 + "\n\n")
+                for entry in entries:
+                    timestamp = entry.get("timestamp", "")
+                    text = entry.get("text", "")
+                    f.write(f"[{timestamp}]\n{text}\n\n")
+
+        def export_csv(filename, entries):
+            """Export history as CSV with timestamp, text, and character count."""
+            import csv
+            with open(filename, "w", encoding="utf-8", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Timestamp", "Text", "Characters"])
+                for entry in entries:
+                    timestamp = entry.get("timestamp", "")
+                    text = entry.get("text", "")
+                    char_count = entry.get("char_count", len(text))
+                    writer.writerow([timestamp, text, char_count])
+
+        def export_json(filename, entries):
+            """Export history as JSON with full metadata."""
+            import json
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump({"entries": entries}, f, indent=2, ensure_ascii=False)
+
         btn_frame = ttk.Frame(frame)
         btn_frame.pack(fill=tk.X)
         ttk.Button(btn_frame, text="Copy Selected", command=copy_selected).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Export", command=export_history).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Clear History", command=clear_history).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Close", command=root.destroy).pack(side=tk.RIGHT, padx=5)
 
