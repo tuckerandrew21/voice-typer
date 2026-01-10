@@ -258,3 +258,62 @@ class TestHotkeyHelpers:
         hotkey = {'ctrl': True, 'shift': False, 'alt': False, 'key': 'a'}
         result = config.hotkey_to_string(hotkey)
         assert result == 'Ctrl+A'
+
+
+class TestLanguageConfig:
+    """Tests for language options and labels."""
+
+    def test_language_options_has_common_languages(self):
+        """LANGUAGE_OPTIONS should include common languages."""
+        assert "en" in config.LANGUAGE_OPTIONS
+        assert "es" in config.LANGUAGE_OPTIONS
+        assert "fr" in config.LANGUAGE_OPTIONS
+        assert "de" in config.LANGUAGE_OPTIONS
+        assert "auto" in config.LANGUAGE_OPTIONS
+
+    def test_language_options_minimum_count(self):
+        """Should have at least 10 language options."""
+        assert len(config.LANGUAGE_OPTIONS) >= 10
+
+    def test_all_language_options_have_labels(self):
+        """Every language option should have a corresponding label."""
+        for code in config.LANGUAGE_OPTIONS:
+            assert code in config.LANGUAGE_LABELS, f"Missing label for language: {code}"
+
+    def test_language_labels_are_human_readable(self):
+        """Labels should be human-readable names, not codes."""
+        assert config.LANGUAGE_LABELS["en"] == "English"
+        assert config.LANGUAGE_LABELS["es"] == "Spanish"
+        assert config.LANGUAGE_LABELS["fr"] == "French"
+        assert config.LANGUAGE_LABELS["auto"] == "Auto-detect"
+
+    def test_language_labels_not_same_as_codes(self):
+        """Labels should be different from codes (human readable)."""
+        for code, label in config.LANGUAGE_LABELS.items():
+            # Labels should be longer/different than 2-3 char codes
+            assert len(label) > len(code), f"Label '{label}' too short for code '{code}'"
+
+    def test_default_language_has_label(self):
+        """Default language should have a label."""
+        default_lang = config.DEFAULTS.get("language", "en")
+        assert default_lang in config.LANGUAGE_LABELS
+
+
+class TestPasteModeConfig:
+    """Tests for paste mode configuration."""
+
+    def test_paste_mode_default_exists(self):
+        """paste_mode should have a default value."""
+        assert "paste_mode" in config.DEFAULTS
+
+    def test_paste_mode_default_is_clipboard(self):
+        """Default paste mode should be 'clipboard'."""
+        assert config.DEFAULTS["paste_mode"] == "clipboard"
+
+    def test_direct_typing_delay_default_exists(self):
+        """direct_typing_delay_ms should have a default value."""
+        assert "direct_typing_delay_ms" in config.DEFAULTS
+
+    def test_direct_typing_delay_is_positive(self):
+        """Direct typing delay should be a positive number."""
+        assert config.DEFAULTS["direct_typing_delay_ms"] >= 0
