@@ -53,6 +53,18 @@ EDITING_COMMANDS = {
     "undo that",
 }
 
+# Case manipulation commands that operate on previous word
+CASE_MANIPULATION_COMMANDS = {
+    "capitalize that": "capitalize",
+    "uppercase that": "uppercase",
+    "lowercase that": "lowercase",
+}
+
+# Granular deletion commands
+DELETION_COMMANDS = {
+    "delete last word",
+}
+
 # Action commands that trigger keyboard shortcuts
 ACTION_COMMANDS = {
     "select all": "ctrl+a",
@@ -407,9 +419,40 @@ def process_voice_commands(text):
         return word.strip('.,!?;:"\'-()[]{}')
 
     while i < len(words):
-        # Check for multi-word commands first (2-word phrases)
+        # Check for 3-word commands first (delete last word)
+        if i + 2 < len(words):
+            three_word = f"{strip_punctuation(words[i])} {strip_punctuation(words[i + 1])} {strip_punctuation(words[i + 2])}".lower()
+
+            # Check deletion commands (delete last word)
+            if three_word in DELETION_COMMANDS:
+                # Remove only the last word from result buffer
+                if result:
+                    result.pop()
+                i += 3
+                continue
+
+        # Check for multi-word commands (2-word phrases)
         if i + 1 < len(words):
             two_word = f"{strip_punctuation(words[i])} {strip_punctuation(words[i + 1])}".lower()
+
+            # Check case manipulation commands (capitalize that, uppercase that, lowercase that)
+            if two_word in CASE_MANIPULATION_COMMANDS:
+                # Apply case transformation to last word in result buffer
+                if result:
+                    last_word = result[-1]
+                    case_op = CASE_MANIPULATION_COMMANDS[two_word]
+
+                    if case_op == "capitalize":
+                        # Capitalize first letter only
+                        result[-1] = last_word[0].upper() + last_word[1:] if len(last_word) > 0 else last_word
+                    elif case_op == "uppercase":
+                        # Convert entire word to uppercase
+                        result[-1] = last_word.upper()
+                    elif case_op == "lowercase":
+                        # Convert entire word to lowercase
+                        result[-1] = last_word.lower()
+                i += 2
+                continue
 
             # Check editing commands (scratch that, delete that)
             if two_word in EDITING_COMMANDS:

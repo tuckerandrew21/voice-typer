@@ -298,3 +298,162 @@ class TestTranscriptionHistory:
         history = text_processor.TranscriptionHistory(persist=False)
         history.add("")
         assert len(history.entries) == 0
+
+
+class TestCaseManipulationCommands:
+    """Tests for case manipulation commands (capitalize/uppercase/lowercase that)."""
+
+    def test_capitalize_that_basic(self):
+        """'capitalize that' should capitalize first letter of previous word."""
+        text, should_scratch, actions = text_processor.process_voice_commands("hello world capitalize that")
+        assert text == "hello World"
+        assert should_scratch is False
+
+    def test_capitalize_that_already_capitalized(self):
+        """'capitalize that' on already capitalized word should work."""
+        text, should_scratch, actions = text_processor.process_voice_commands("hello World capitalize that")
+        assert text == "hello World"
+
+    def test_uppercase_that_basic(self):
+        """'uppercase that' should convert previous word to uppercase."""
+        text, should_scratch, actions = text_processor.process_voice_commands("api endpoint uppercase that")
+        assert text == "api ENDPOINT"
+        assert should_scratch is False
+
+    def test_uppercase_that_mixed_case(self):
+        """'uppercase that' should work on mixed case word."""
+        text, should_scratch, actions = text_processor.process_voice_commands("hello WoRlD uppercase that")
+        assert text == "hello WORLD"
+
+    def test_lowercase_that_basic(self):
+        """'lowercase that' should convert previous word to lowercase."""
+        text, should_scratch, actions = text_processor.process_voice_commands("HTTP Protocol lowercase that")
+        assert text == "HTTP protocol"
+        assert should_scratch is False
+
+    def test_lowercase_that_all_caps(self):
+        """'lowercase that' should work on all caps word."""
+        text, should_scratch, actions = text_processor.process_voice_commands("API ENDPOINT lowercase that")
+        assert text == "API endpoint"
+
+    def test_case_manipulation_empty_buffer(self):
+        """Case manipulation commands on empty buffer should be no-op."""
+        text, should_scratch, actions = text_processor.process_voice_commands("capitalize that")
+        # Command is consumed but has no effect on empty buffer
+        assert text == ""
+        assert should_scratch is False
+
+    def test_case_manipulation_single_word_buffer(self):
+        """Case manipulation should work with single word in buffer."""
+        text, should_scratch, actions = text_processor.process_voice_commands("hello uppercase that")
+        assert text == "HELLO"
+
+    def test_case_manipulation_multiple_words(self):
+        """Case manipulation should only affect last word."""
+        text, should_scratch, actions = text_processor.process_voice_commands("the quick brown fox capitalize that")
+        assert text == "the quick brown Fox"
+
+    def test_case_manipulation_preserves_punctuation(self):
+        """Case manipulation should work with punctuation attached to words."""
+        # Use explicit punctuation in transcription (as Whisper would output it)
+        text, should_scratch, actions = text_processor.process_voice_commands("hello world. uppercase that")
+        # "uppercase that" uppercases the last word "world." (with punctuation attached)
+        assert text == "hello WORLD."
+
+    def test_multiple_case_manipulations(self):
+        """Multiple case manipulations should work in sequence."""
+        text, should_scratch, actions = text_processor.process_voice_commands("hello uppercase that world capitalize that")
+        assert "HELLO" in text
+        assert "World" in text
+
+
+class TestDeleteLastWordCommand:
+    """Tests for 'delete last word' command."""
+
+    def test_delete_last_word_basic(self):
+        """'delete last word' should remove only last word."""
+        text, should_scratch, actions = text_processor.process_voice_commands("this is a test word delete last word")
+        assert text == "this is a test"
+        assert should_scratch is False
+
+    def test_delete_last_word_vs_scratch_that(self):
+        """'delete last word' should be more precise than 'scratch that'."""
+        # delete last word - removes only last word
+        text1, scratch1, _ = text_processor.process_voice_commands("hello world delete last word")
+        assert text1 == "hello"
+        assert scratch1 is False
+
+        # scratch that - removes everything and signals scratch
+        text2, scratch2, _ = text_processor.process_voice_commands("hello world scratch that")
+        assert text2 == ""
+        assert scratch2 is True
+
+    def test_delete_last_word_empty_buffer(self):
+        """'delete last word' on empty buffer should be no-op."""
+        text, should_scratch, actions = text_processor.process_voice_commands("delete last word")
+        # Command is consumed but has no effect on empty buffer
+        assert text == ""
+        assert should_scratch is False
+
+    def test_delete_last_word_single_word(self):
+        """'delete last word' with single word should remove it."""
+        text, should_scratch, actions = text_processor.process_voice_commands("hello delete last word")
+        assert text == ""
+        assert should_scratch is False
+
+    def test_delete_last_word_multiple_times(self):
+        """Multiple 'delete last word' commands should work."""
+        text, should_scratch, actions = text_processor.process_voice_commands("one two three delete last word delete last word")
+        assert text == "one"
+
+    def test_delete_last_word_with_punctuation(self):
+        """'delete last word' should work with punctuation."""
+        # Use explicit punctuation in transcription (as Whisper would output it)
+        text, should_scratch, actions = text_processor.process_voice_commands("hello world. delete last word")
+        # "delete last word" removes "world." (last word with punctuation attached)
+        assert text == "hello"
+
+    def test_delete_last_word_after_other_commands(self):
+        """'delete last word' should work after other commands."""
+        text, should_scratch, actions = text_processor.process_voice_commands("hello world uppercase that delete last word")
+        # "uppercase that" makes it "hello WORLD", then delete removes "WORLD"
+        assert text == "hello"
+
+    def test_delete_last_word_granular(self):
+        """'delete last word' allows granular editing."""
+        # Scenario: User dictates "I want to go to the store tomorrow"
+        # But meant "today" not "tomorrow"
+        text, should_scratch, actions = text_processor.process_voice_commands(
+            "I want to go to the store tomorrow delete last word today"
+        )
+        assert "today" in text
+        assert "tomorrow" not in text
+        assert "store" in text
+
+
+class TestNewCommandsEdgeCases:
+    """Edge case tests for new MVP commands."""
+
+    def test_case_command_in_sentence(self):
+        """Case commands in middle of sentence should not trigger."""
+        # "that" is a common word, make sure it doesn't trigger accidentally
+        text, should_scratch, actions = text_processor.process_voice_commands("I think that uppercase is good")
+        # Should NOT trigger "uppercase that"
+        assert text == "I think that uppercase is good"
+
+    def test_delete_word_in_sentence(self):
+        """'delete', 'last', 'word' as separate words should not trigger command."""
+        text, should_scratch, actions = text_processor.process_voice_commands("I delete the last word sometimes")
+        # Should NOT trigger command
+        assert "delete" in text
+        assert "last" in text
+        assert "word" in text
+
+    def test_combined_new_and_old_commands(self):
+        """New commands should work alongside existing commands."""
+        text, should_scratch, actions = text_processor.process_voice_commands(
+            "hello world new line api endpoint uppercase that"
+        )
+        assert "hello world" in text
+        assert "\n" in text
+        assert "ENDPOINT" in text
