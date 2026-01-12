@@ -62,7 +62,22 @@
         .footer-links { display: flex; gap: 30px; }
         .footer-links a { color: #666; text-decoration: none; }
         .footer-links a:hover { color: #667eea; }
-        @media (max-width: 768px) { .nav-links { display: none; } .hero h1 { font-size: 2em; } .fact-grid { grid-template-columns: 1fr; } .footer-content { flex-direction: column; text-align: center; } .footer-links { flex-wrap: wrap; justify-content: center; } }
+        /* Hamburger Menu */
+        .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
+        .nav-hamburger span { width: 25px; height: 3px; background: #333; border-radius: 2px; transition: all 0.3s; }
+        .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
+        .nav-hamburger.active span:nth-child(2) { opacity: 0; }
+        .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
+        /* Mobile Menu */
+        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
+        .mobile-menu.active { display: block; }
+        .mobile-menu a { display: block; padding: 12px 0; color: #333; text-decoration: none; font-weight: 500; border-bottom: 1px solid #eee; }
+        .mobile-menu a:last-child { border-bottom: none; }
+        .mobile-menu a:hover { color: #667eea; }
+        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: white; }
+        /* Focus States */
+        a:focus-visible, button:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+        @media (max-width: 768px) { .nav-hamburger { display: flex; } .nav-links { display: none; } .hero h1 { font-size: 2em; } .fact-grid { grid-template-columns: 1fr; } .footer-content { flex-direction: column; text-align: center; } .footer-links { flex-wrap: wrap; justify-content: center; } }
     </style>
 </head>
 <body>
@@ -76,8 +91,21 @@
                 <a href="/support/faq.html">FAQ</a>
                 <a href="/install.html" class="nav-cta">Download</a>
             </div>
+            <div class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
         </div>
     </nav>
+
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/#features">Features</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/docs/">Docs</a>
+        <a href="/support/faq.html">FAQ</a>
+        <a href="/install.html" class="nav-cta">Download</a>
+    </div>
 
     <section class="hero">
         <h1>Press Kit</h1>
@@ -276,5 +304,21 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const hamburger = document.querySelector('.nav-hamburger');
+            menu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        document.querySelectorAll('.mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobileMenu').classList.remove('active');
+                document.querySelector('.nav-hamburger').classList.remove('active');
+            });
+        });
+    </script>
 </body>
 </html>

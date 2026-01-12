@@ -44,7 +44,34 @@
         .docs-footer { padding: 30px 40px; border-top: 1px solid #eee; margin-top: 60px; display: flex; justify-content: space-between; }
         .docs-footer a { color: #667eea; text-decoration: none; }
         .docs-footer a:hover { text-decoration: underline; }
-        @media (max-width: 768px) { .nav-links { display: none; } .docs-layout { grid-template-columns: 1fr; } .sidebar { display: none; } .docs-content { padding: 20px; } .docs-content h1 { font-size: 2em; } }
+        /* Hamburger Menu */
+        .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
+        .nav-hamburger span { width: 25px; height: 3px; background: #333; border-radius: 2px; transition: all 0.3s; }
+        .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
+        .nav-hamburger.active span:nth-child(2) { opacity: 0; }
+        .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
+        /* Mobile Menu */
+        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
+        .mobile-menu.active { display: block; }
+        .mobile-menu a { display: block; padding: 12px 0; color: #333; text-decoration: none; font-weight: 500; border-bottom: 1px solid #eee; }
+        .mobile-menu a:last-child { border-bottom: none; }
+        .mobile-menu a:hover { color: #667eea; }
+        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: white; }
+        /* Mobile Docs Nav */
+        .mobile-docs-nav { display: none; background: #f9f9f9; padding: 15px 20px; border-bottom: 1px solid #eee; }
+        .mobile-docs-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 600; color: #333; }
+        .mobile-docs-toggle svg { transition: transform 0.3s; }
+        .mobile-docs-nav.active .mobile-docs-toggle svg { transform: rotate(180deg); }
+        .mobile-docs-links { display: none; padding-top: 15px; }
+        .mobile-docs-nav.active .mobile-docs-links { display: block; }
+        .mobile-docs-links a { display: block; padding: 10px 0; color: #666; text-decoration: none; border-bottom: 1px solid #eee; }
+        .mobile-docs-links a:last-child { border-bottom: none; }
+        .mobile-docs-links a.active { color: #667eea; font-weight: 600; }
+        /* Focus States */
+        a:focus-visible, button:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+        /* Table Scroll Wrapper */
+        .table-wrapper { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+        @media (max-width: 768px) { .nav-hamburger { display: flex; } .mobile-docs-nav { display: block; } .nav-links { display: none; } .docs-layout { grid-template-columns: 1fr; } .sidebar { display: none; } .docs-content { padding: 20px; } .docs-content h1 { font-size: 2em; } }
     </style>
 </head>
 <body>
@@ -58,8 +85,37 @@
                 <a href="/#faq">FAQ</a>
                 <a href="/install.html" class="nav-cta">Download</a>
             </div>
+            <div class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
         </div>
     </nav>
+
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/#features">Features</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/docs/">Docs</a>
+        <a href="/#faq">FAQ</a>
+        <a href="/install.html" class="nav-cta">Download</a>
+    </div>
+
+    <div class="mobile-docs-nav" id="mobileDocsNav">
+        <div class="mobile-docs-toggle" onclick="toggleMobileDocsNav()">
+            <span>Documentation Menu</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 4L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <div class="mobile-docs-links">
+            <a href="/docs/">Introduction</a>
+            <a href="/docs/voice-commands.html">Voice Commands</a>
+            <a href="/docs/settings.html" class="active">Settings Guide</a>
+            <a href="/docs/troubleshooting.html">Troubleshooting</a>
+            <a href="/#faq">FAQ</a>
+        </div>
+    </div>
 
     <div class="docs-layout">
         <aside class="sidebar">
@@ -216,5 +272,26 @@
             </div>
         </main>
     </div>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const hamburger = document.querySelector('.nav-hamburger');
+            menu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        function toggleMobileDocsNav() {
+            const nav = document.getElementById('mobileDocsNav');
+            nav.classList.toggle('active');
+        }
+
+        document.querySelectorAll('.mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobileMenu').classList.remove('active');
+                document.querySelector('.nav-hamburger').classList.remove('active');
+            });
+        });
+    </script>
 </body>
 </html>

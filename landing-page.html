@@ -92,6 +92,76 @@
             opacity: 0.9;
         }
 
+        /* Hamburger Menu */
+        .nav-hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .nav-hamburger span {
+            width: 25px;
+            height: 3px;
+            background: #333;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 62px;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 99;
+        }
+
+        .mobile-menu.active {
+            display: block;
+        }
+
+        .mobile-menu a {
+            display: block;
+            padding: 12px 0;
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid #eee;
+        }
+
+        .mobile-menu a:last-child {
+            border-bottom: none;
+        }
+
+        .mobile-menu a.nav-cta {
+            display: inline-block;
+            margin-top: 10px;
+            color: white;
+        }
+
+        /* Focus States */
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+        }
+
+        .cta-button:focus-visible, .nav-cta:focus-visible {
+            outline: 2px solid white;
+            outline-offset: 2px;
+        }
+
+        /* Table Scroll Wrapper */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 0 -20px;
+            padding: 0 20px;
+        }
+
         header {
             padding: 60px 0;
             text-align: center;
@@ -362,6 +432,10 @@
                 display: none;
             }
 
+            .nav-hamburger {
+                display: flex;
+            }
+
             header h1 {
                 font-size: 2em;
             }
@@ -395,8 +469,20 @@
                 <a href="#faq">FAQ</a>
                 <a href="/install.html" class="nav-cta">Download</a>
             </div>
+            <div class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
         </div>
     </nav>
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="#features">Features</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/docs/">Docs</a>
+        <a href="#faq">FAQ</a>
+        <a href="/install.html" class="nav-cta">Download</a>
+    </div>
 
     <header>
         <div class="container">
@@ -448,6 +534,7 @@
     <section class="comparison">
         <div class="container">
             <h2>Why MurmurTone?</h2>
+            <div class="table-wrapper">
             <table class="comparison-table">
                 <thead>
                     <tr>
@@ -508,6 +595,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
         </div>
     </section>
 
@@ -601,13 +689,29 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2026 MurmurTone. Privacy-focused speech recognition.</p>
+                <p>&copy; 2025 MurmurTone. Privacy-focused speech recognition.</p>
                 <p style="margin-top: 10px;">Your voice, locally.</p>
             </div>
         </div>
     </footer>
 
     <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const hamburger = document.querySelector('.nav-hamburger');
+            menu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobileMenu').classList.remove('active');
+                document.querySelector('.nav-hamburger').classList.remove('active');
+            });
+        });
+
         // FAQ Accordion
         document.querySelectorAll('.faq-question').forEach(question => {
             question.addEventListener('click', () => {
