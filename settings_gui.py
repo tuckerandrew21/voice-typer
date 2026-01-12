@@ -1,8 +1,11 @@
 """
-Settings GUI for MurmurTone using tkinter.
+Settings GUI for MurmurTone using CustomTkinter.
+
+Modern dark theme with sidebar navigation, matching V1 brand.
 """
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import numpy as np
 import sounddevice as sd
 import subprocess
@@ -10,95 +13,33 @@ import sys
 import threading
 import os
 import webbrowser
+
 import config
 import text_processor
 import license
-
-# V1 Brand Colors - Slate + Teal
-PRIMARY = "#0d9488"
-PRIMARY_DARK = "#0f766e"
-PRIMARY_LIGHT = "#14b8a6"
-SLATE_900 = "#0f172a"
-SLATE_800 = "#1e293b"
-SLATE_700 = "#334155"
-SLATE_600 = "#475569"
-SLATE_500 = "#64748b"
-SLATE_400 = "#94a3b8"
-SLATE_200 = "#e2e8f0"
-SLATE_100 = "#f1f5f9"
-SUCCESS = "#10b981"
-WARNING = "#f59e0b"
-ERROR = "#ef4444"
+import settings_logic
+from theme import (
+    # Colors
+    PRIMARY, PRIMARY_DARK, PRIMARY_LIGHT,
+    SLATE_900, SLATE_800, SLATE_700, SLATE_600, SLATE_500, SLATE_400, SLATE_200, SLATE_100,
+    SUCCESS, WARNING, ERROR,
+    # Style helpers
+    get_card_style, get_button_style, get_entry_style, get_switch_style,
+    get_dropdown_style, get_label_style, get_nav_item_style, get_nav_section_style,
+    get_status_color, get_meter_color,
+    # Constants
+    SPACING, PAD_DEFAULT, PAD_SPACIOUS, CARD_PAD_X, CARD_PAD_Y,
+    SIDEBAR_WIDTH, NAV_ITEM_HEIGHT, FONT_SIZES, WINDOW_CONFIG,
+)
 
 
-def check_cuda_available():
-    """Check if CUDA is available for GPU acceleration."""
-    try:
-        import torch
-        return torch.cuda.is_available()
-    except ImportError:
-        # torch not installed, try ctranslate2 directly
-        try:
-            import ctranslate2
-            # ctranslate2 API requires device argument
-            cuda_types = ctranslate2.get_supported_compute_types("cuda")
-            return len(cuda_types) > 0
-        except (ImportError, Exception):
-            return False
-
-
-# Set to True to test the "GPU not available" UI state
-_TEST_GPU_UNAVAILABLE = False
-
-
-def get_cuda_status():
-    """
-    Get detailed CUDA status info.
-    Returns tuple: (is_available, status_message, gpu_name_or_reason)
-    """
-    # Test mode: simulate GPU unavailable
-    if _TEST_GPU_UNAVAILABLE:
-        return (False, "GPU libraries not installed", None)
-
-    # Check if ctranslate2 supports CUDA compute types
-    cuda_supported = False
-    try:
-        import ctranslate2
-        # ctranslate2 API requires device argument
-        cuda_types = ctranslate2.get_supported_compute_types("cuda")
-        cuda_supported = len(cuda_types) > 0
-    except (ImportError, Exception):
-        pass
-
-    if not cuda_supported:
-        # Check if torch can detect CUDA
-        try:
-            import torch
-            if torch.cuda.is_available():
-                cuda_supported = True
-        except ImportError:
-            pass
-
-    if not cuda_supported:
-        return (False, "GPU libraries not installed", None)
-
-    # CUDA is supported, try to get GPU name via torch
-    try:
-        import torch
-        if torch.cuda.is_available():
-            gpu_name = torch.cuda.get_device_name(0)
-            return (True, "CUDA Available", gpu_name)
-        else:
-            # ctranslate2 supports CUDA but torch doesn't see a GPU
-            # This means libraries are installed but no GPU hardware
-            return (True, "CUDA Available", "via ctranslate2")
-    except ImportError:
-        # No torch, but ctranslate2 says CUDA works
-        return (True, "CUDA Available", "via ctranslate2")
+# Configure CustomTkinter appearance
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("dark-blue")
 
 
 class Tooltip:
-    """Hover tooltip for widgets."""
+    """Modern tooltip that appears on hover."""
 
     def __init__(self, widget, text):
         self.widget = widget
@@ -108,18 +49,23 @@ class Tooltip:
         widget.bind("<Leave>", self.hide)
 
     def show(self, event=None):
-        x, y, _, _ = self.widget.bbox("insert") if hasattr(self.widget, 'bbox') else (0, 0, 0, 0)
-        x += self.widget.winfo_rootx() + 25
-        y += self.widget.winfo_rooty() + 25
+        x = self.widget.winfo_rootx() + 25
+        y = self.widget.winfo_rooty() + 25
 
-        self.tooltip = tk.Toplevel(self.widget)
+        self.tooltip = ctk.CTkToplevel(self.widget)
         self.tooltip.wm_overrideredirect(True)
         self.tooltip.wm_geometry(f"+{x}+{y}")
+        self.tooltip.configure(fg_color=SLATE_700)
 
-        frame = tk.Frame(self.tooltip, bg=SLATE_700, bd=1, relief=tk.SOLID)
-        frame.pack()
-        label = tk.Label(frame, text=self.text, bg=SLATE_700, fg="#ffffff",
-                        font=("", 9), justify=tk.LEFT, padx=8, pady=6)
+        label = ctk.CTkLabel(
+            self.tooltip,
+            text=self.text,
+            text_color=SLATE_200,
+            font=("", 11),
+            padx=8,
+            pady=4,
+            corner_radius=6,
+        )
         label.pack()
 
     def hide(self, event=None):
@@ -128,88 +74,248 @@ class Tooltip:
             self.tooltip = None
 
 
-class HotkeyCapture:
-    """Widget to capture hotkey combinations."""
+class HotkeyCapture(ctk.CTkFrame):
+    """Widget for capturing keyboard hotkeys."""
 
-    def __init__(self, parent, initial_hotkey):
-        self.frame = ttk.Frame(parent)
-        self.hotkey = initial_hotkey.copy()
+    def __init__(self, parent, initial_hotkey="scroll_lock"):
+        super().__init__(parent, fg_color="transparent")
+
+        self.hotkey = initial_hotkey
         self.capturing = False
 
-        self.label = ttk.Label(self.frame, text=config.hotkey_to_string(self.hotkey), width=20)
-        self.label.pack(side=tk.LEFT, padx=(0, 5))
+        # Display label
+        self.display_frame = ctk.CTkFrame(self, fg_color=SLATE_700, corner_radius=6)
+        self.display_frame.pack(side="left", fill="x", expand=True)
 
-        self.button = ttk.Button(self.frame, text="Set Hotkey", command=self.start_capture)
-        self.button.pack(side=tk.LEFT)
+        self.display_label = ctk.CTkLabel(
+            self.display_frame,
+            text=self._format_hotkey(initial_hotkey),
+            text_color=SLATE_200,
+            font=("", 12),
+            anchor="w",
+            padx=12,
+            pady=8,
+        )
+        self.display_label.pack(fill="x")
+
+        # Set button
+        self.set_btn = ctk.CTkButton(
+            self,
+            text="Set",
+            width=60,
+            **get_button_style("secondary"),
+            command=self.start_capture,
+        )
+        self.set_btn.pack(side="left", padx=(8, 0))
+
+        # Listener reference (will be set up when capturing)
+        self.listener = None
+
+    def _format_hotkey(self, hotkey):
+        """Format hotkey for display."""
+        if not hotkey:
+            return "Not set"
+        # Handle dict format (from config.py)
+        if isinstance(hotkey, dict):
+            return config.hotkey_to_string(hotkey)
+        # Handle string format
+        parts = hotkey.split("+")
+        formatted = [p.replace("_", " ").title() for p in parts]
+        return " + ".join(formatted)
 
     def start_capture(self):
+        """Start capturing a hotkey."""
+        if self.capturing:
+            return
+
         self.capturing = True
-        self.label.config(text="Press keys...")
-        self.button.config(text="Press keys", state=tk.DISABLED)
-        # Bind to root window for key capture
-        self.frame.winfo_toplevel().bind("<KeyPress>", self.on_key)
-        self.frame.winfo_toplevel().bind("<KeyRelease>", self.on_key_release)
-        self.pressed_keys = set()
-        self.main_key = None
+        self.set_btn.configure(text="...", state="disabled")
+        self.display_label.configure(text="Press any key...")
 
-    def on_key(self, event):
-        if not self.capturing:
-            return
+        # Start keyboard listener
+        try:
+            from pynput import keyboard
 
-        key_name = event.keysym.lower()
+            def on_press(key):
+                try:
+                    # Get key name
+                    if hasattr(key, "char") and key.char:
+                        key_name = key.char.lower()
+                    else:
+                        key_name = key.name.lower()
 
-        # Track modifier keys
-        if key_name in ("control_l", "control_r"):
-            self.pressed_keys.add("ctrl")
-        elif key_name in ("shift_l", "shift_r"):
-            self.pressed_keys.add("shift")
-        elif key_name in ("alt_l", "alt_r"):
-            self.pressed_keys.add("alt")
-        else:
-            # This is the main key
-            self.main_key = key_name
+                    self.hotkey = key_name
+                    self.display_label.configure(text=self._format_hotkey(key_name))
+                except AttributeError:
+                    pass
 
-    def on_key_release(self, event):
-        if not self.capturing:
-            return
+                self.stop_capture()
+                return False
 
-        # When a key is released and we have a main key, finalize
-        if self.main_key:
-            self.hotkey = {
-                "ctrl": "ctrl" in self.pressed_keys,
-                "shift": "shift" in self.pressed_keys,
-                "alt": "alt" in self.pressed_keys,
-                "key": self.main_key
-            }
-            self.finish_capture()
+            self.listener = keyboard.Listener(on_press=on_press)
+            self.listener.start()
+        except ImportError:
+            self.display_label.configure(text="pynput not installed")
+            self.stop_capture()
 
-    def finish_capture(self):
+    def stop_capture(self):
+        """Stop capturing."""
         self.capturing = False
-        self.label.config(text=config.hotkey_to_string(self.hotkey))
-        self.button.config(text="Set Hotkey", state=tk.NORMAL)
-        self.frame.winfo_toplevel().unbind("<KeyPress>")
-        self.frame.winfo_toplevel().unbind("<KeyRelease>")
+        self.set_btn.configure(text="Set", state="normal")
+        if self.listener:
+            self.listener.stop()
+            self.listener = None
 
     def get_hotkey(self):
+        """Get the current hotkey."""
         return self.hotkey
 
     def set_hotkey(self, hotkey):
-        """Set hotkey from dict."""
-        self.hotkey = hotkey.copy()
-        self.label.config(text=config.hotkey_to_string(self.hotkey))
+        """Set the hotkey programmatically."""
+        self.hotkey = hotkey
+        self.display_label.configure(text=self._format_hotkey(hotkey))
+
+
+class NavItem(ctk.CTkButton):
+    """Sidebar navigation item."""
+
+    def __init__(self, parent, text, icon=None, command=None, **kwargs):
+        super().__init__(
+            parent,
+            text=f"  {icon}  {text}" if icon else f"  {text}",
+            anchor="w",
+            height=NAV_ITEM_HEIGHT,
+            command=command,
+            **get_nav_item_style(active=False),
+            **kwargs,
+        )
+        self._text = text
+        self._icon = icon
+        self._is_active = False
+
+    def set_active(self, active):
+        """Set the active state of this nav item."""
+        self._is_active = active
+        style = get_nav_item_style(active=active)
+        self.configure(**style)
+
+
+class SectionHeader(ctk.CTkLabel):
+    """Sidebar section header (e.g., "Recording", "System")."""
+
+    def __init__(self, parent, text):
+        super().__init__(
+            parent,
+            text=text.upper(),
+            anchor="w",
+            **get_nav_section_style(),
+        )
+
+
+class Card(ctk.CTkFrame):
+    """Card container for grouping related settings."""
+
+    def __init__(self, parent, title=None, **kwargs):
+        style = get_card_style()
+        super().__init__(parent, **style, **kwargs)
+
+        self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
+
+        if title:
+            self.title_label = ctk.CTkLabel(
+                self,
+                text=title,
+                **get_label_style("subtitle"),
+                anchor="w",
+            )
+            self.title_label.pack(fill="x", padx=CARD_PAD_X, pady=(CARD_PAD_Y, 4))
+            self.content_frame.pack(fill="both", expand=True, padx=CARD_PAD_X, pady=(0, CARD_PAD_Y))
+        else:
+            self.content_frame.pack(fill="both", expand=True, padx=CARD_PAD_X, pady=CARD_PAD_Y)
+
+
+class SettingRow(ctk.CTkFrame):
+    """A single setting row with label and control."""
+
+    def __init__(self, parent, label, description=None, **kwargs):
+        super().__init__(parent, fg_color="transparent", **kwargs)
+
+        # Left side: label and description
+        self.label_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.label_frame.pack(side="left", fill="x", expand=True)
+
+        self.label = ctk.CTkLabel(
+            self.label_frame,
+            text=label,
+            **get_label_style("default"),
+            anchor="w",
+        )
+        self.label.pack(fill="x")
+
+        if description:
+            self.description = ctk.CTkLabel(
+                self.label_frame,
+                text=description,
+                **get_label_style("help"),
+                anchor="w",
+            )
+            self.description.pack(fill="x")
+
+        # Right side: control (added by caller)
+        self.control_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.control_frame.pack(side="right")
+
+
+class StatusIndicator(ctk.CTkFrame):
+    """Status indicator with colored dot and text."""
+
+    def __init__(self, parent, status="inactive", text=""):
+        super().__init__(parent, fg_color="transparent")
+
+        self.dot = ctk.CTkLabel(
+            self,
+            text="",
+            width=10,
+            height=10,
+            corner_radius=5,
+            fg_color=get_status_color(status),
+        )
+        self.dot.pack(side="left", padx=(0, 6))
+
+        self.text_label = ctk.CTkLabel(
+            self,
+            text=text,
+            **get_label_style("default"),
+        )
+        self.text_label.pack(side="left")
+
+    def set_status(self, status, text=None):
+        """Update the status indicator."""
+        self.dot.configure(fg_color=get_status_color(status))
+        if text is not None:
+            self.text_label.configure(text=text)
 
 
 class SettingsWindow:
-    """Settings dialog window."""
+    """Modern settings dialog window with sidebar navigation."""
 
     def __init__(self, current_config, on_save_callback=None):
         self.config = current_config.copy()
         self.on_save_callback = on_save_callback
         self.window = None
-        self.devices_list = []  # List of (display_name, device_info) tuples
-        # Audio test state (for noise gate level meter)
+        self.devices_list = []
         self.noise_test_stream = None
         self.noise_test_running = False
+
+        # Navigation state
+        self.current_section = "general"
+        self.nav_items = {}
+        self.sections = {}
+
+        # Custom data (preserved across saves)
+        self.custom_dictionary = self.config.get("custom_dictionary", {})
+        self.custom_vocabulary = self.config.get("custom_vocabulary", [])
+        self.custom_commands = self.config.get("custom_commands", {})
 
     def show(self):
         """Show the settings window."""
@@ -218,1352 +324,1198 @@ class SettingsWindow:
             self.window.focus_force()
             return
 
-        self.window = tk.Tk()
-        self.window.title(f"{config.APP_NAME} Settings v{config.VERSION}")
-
-        # Use 85% of screen height or 700px (tabs reduce scroll needs)
-        screen_height = self.window.winfo_screenheight()
-        window_height = min(int(screen_height * 0.85), 700)
-        window_width = 560  # Slightly wider for tab labels
-
-        self.window.geometry(f"{window_width}x{window_height}")
-        self.window.resizable(False, False)
+        # Create main window
+        self.window = ctk.CTk()
+        self.window.title(WINDOW_CONFIG["title"])
+        self.window.geometry(f"{WINDOW_CONFIG['width']}x{WINDOW_CONFIG['height']}")
+        self.window.minsize(WINDOW_CONFIG["min_width"], WINDOW_CONFIG["min_height"])
+        self.window.configure(fg_color=SLATE_900)
 
         # Center on screen
         self.window.update_idletasks()
-        x = (self.window.winfo_screenwidth() - window_width) // 2
-        y = (screen_height - window_height) // 2
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
+        x = (screen_width - WINDOW_CONFIG["width"]) // 2
+        y = (screen_height - WINDOW_CONFIG["height"]) // 2
         self.window.geometry(f"+{x}+{y}")
 
-        # Search bar
-        search_frame = ttk.Frame(self.window)
-        search_frame.pack(fill=tk.X, padx=10, pady=(10, 5))
+        # Create layout
+        self._create_sidebar()
+        self._create_content_area()
 
-        ttk.Label(search_frame, text="Search:").pack(side=tk.LEFT, padx=(0, 5))
-        self.search_var = tk.StringVar()
-        search_entry = ttk.Entry(search_frame, textvariable=self.search_var, width=40)
-        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.search_var.trace_add("write", self._on_search_change)
+        # Create all sections
+        self._create_general_section()
+        self._create_audio_section()
+        self._create_recognition_section()
+        self._create_text_section()
+        self._create_advanced_section()
+        self._create_about_section()
 
-        # Create tabbed notebook
-        self.notebook = ttk.Notebook(self.window)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
-
-        # Initialize search index
-        # Each entry: {"terms": [searchable strings], "widget": frame, "tab_index": int, "tab_name": str}
-        self.search_index = []
-
-        # Create tabs
-        self._create_general_tab()
-        self._create_audio_tab()
-        self._create_recognition_tab()
-        self._create_text_tab()
-        self._create_advanced_tab()
-
-        # Buttons at bottom
-        button_frame = ttk.Frame(self.window)
-        button_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
-
-        ttk.Button(button_frame, text="Save", command=self.save).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.close).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Reset to Defaults", command=self.reset_defaults).pack(side=tk.LEFT, padx=5)
+        # Show initial section
+        self._show_section("general")
 
         # Handle window close
         self.window.protocol("WM_DELETE_WINDOW", self.close)
 
         self.window.mainloop()
 
-    def _create_scrollable_tab(self):
-        """Create a scrollable tab frame with canvas and scrollbar."""
-        container = ttk.Frame(self.notebook)
-        canvas = tk.Canvas(container, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+    def _create_sidebar(self):
+        """Create the sidebar navigation."""
+        self.sidebar = ctk.CTkFrame(
+            self.window,
+            width=SIDEBAR_WIDTH,
+            fg_color=SLATE_800,
+            corner_radius=0,
+        )
+        self.sidebar.pack(side="left", fill="y")
+        self.sidebar.pack_propagate(False)
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        # App title in sidebar
+        title_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        title_frame.pack(fill="x", padx=12, pady=(16, 24))
+
+        ctk.CTkLabel(
+            title_frame,
+            text=config.APP_NAME,
+            font=("", 18, "bold"),
+            text_color=SLATE_100,
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            title_frame,
+            text="Settings",
+            font=("", 12),
+            text_color=SLATE_500,
+        ).pack(anchor="w")
+
+        # Recording section
+        SectionHeader(self.sidebar, "Recording").pack(
+            fill="x", padx=12, pady=(0, 4)
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self._add_nav_item("general", "General", icon=None)
+        self._add_nav_item("audio", "Audio", icon=None)
 
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Processing section
+        SectionHeader(self.sidebar, "Processing").pack(
+            fill="x", padx=12, pady=(16, 4)
+        )
 
-        # Enable mouse wheel scrolling for this canvas
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", _on_mousewheel))
-        canvas.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
+        self._add_nav_item("recognition", "Recognition", icon=None)
+        self._add_nav_item("text", "Text", icon=None)
+        self._add_nav_item("advanced", "Advanced", icon=None)
 
-        return container, scrollable_frame
+        # System section
+        SectionHeader(self.sidebar, "System").pack(
+            fill="x", padx=12, pady=(16, 4)
+        )
 
-    def _create_general_tab(self):
-        """Create General settings tab."""
-        container, scrollable_frame = self._create_scrollable_tab()
-        self.notebook.add(container, text="General")
+        self._add_nav_item("about", "About", icon=None)
 
-        # Main frame with padding
-        main_frame = ttk.Frame(scrollable_frame, padding=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        # Spacer
+        ctk.CTkFrame(self.sidebar, fg_color="transparent", height=1).pack(
+            fill="both", expand=True
+        )
 
-        row = 0
+        # Footer links
+        footer_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        footer_frame.pack(fill="x", padx=12, pady=12)
+
+        # Version info
+        ctk.CTkLabel(
+            footer_frame,
+            text=f"v{config.VERSION}",
+            font=("", 10),
+            text_color=SLATE_500,
+        ).pack(anchor="w")
+
+        # Links
+        links_frame = ctk.CTkFrame(footer_frame, fg_color="transparent")
+        links_frame.pack(anchor="w", pady=(4, 0))
+
+        privacy_link = ctk.CTkLabel(
+            links_frame,
+            text="Privacy",
+            font=("", 10),
+            text_color=PRIMARY,
+            cursor="hand2",
+        )
+        privacy_link.pack(side="left")
+        privacy_link.bind("<Button-1>", lambda e: webbrowser.open("https://murmurtone.com/privacy"))
+
+        ctk.CTkLabel(
+            links_frame,
+            text=" | ",
+            font=("", 10),
+            text_color=SLATE_500,
+        ).pack(side="left")
+
+        terms_link = ctk.CTkLabel(
+            links_frame,
+            text="Terms",
+            font=("", 10),
+            text_color=PRIMARY,
+            cursor="hand2",
+        )
+        terms_link.pack(side="left")
+        terms_link.bind("<Button-1>", lambda e: webbrowser.open("https://murmurtone.com/terms"))
+
+    def _add_nav_item(self, section_id, text, icon=None):
+        """Add a navigation item to the sidebar."""
+        nav_item = NavItem(
+            self.sidebar,
+            text=text,
+            icon=icon,
+            command=lambda: self._show_section(section_id),
+        )
+        nav_item.pack(fill="x", padx=8, pady=1)
+        self.nav_items[section_id] = nav_item
+
+    def _create_content_area(self):
+        """Create the main content area."""
+        self.content_area = ctk.CTkFrame(
+            self.window,
+            fg_color=SLATE_900,
+            corner_radius=0,
+        )
+        self.content_area.pack(side="right", fill="both", expand=True)
+
+        # Header with section title
+        self.header = ctk.CTkFrame(self.content_area, fg_color="transparent", height=60)
+        self.header.pack(fill="x", padx=PAD_SPACIOUS, pady=(PAD_SPACIOUS, 0))
+        self.header.pack_propagate(False)
+
+        self.section_title = ctk.CTkLabel(
+            self.header,
+            text="",
+            **get_label_style("title"),
+            anchor="w",
+        )
+        self.section_title.pack(side="left", fill="x", expand=True)
+
+        # Scrollable content
+        self.scroll_frame = ctk.CTkScrollableFrame(
+            self.content_area,
+            fg_color="transparent",
+        )
+        self.scroll_frame.pack(fill="both", expand=True, padx=PAD_SPACIOUS, pady=PAD_DEFAULT)
+
+        # Footer with buttons
+        self.footer = ctk.CTkFrame(self.content_area, fg_color="transparent", height=50)
+        self.footer.pack(fill="x", padx=PAD_SPACIOUS, pady=PAD_DEFAULT)
+        self.footer.pack_propagate(False)
+
+        ctk.CTkButton(
+            self.footer,
+            text="Save",
+            width=100,
+            **get_button_style("primary"),
+            command=self.save,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            self.footer,
+            text="Cancel",
+            width=100,
+            **get_button_style("secondary"),
+            command=self.close,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            self.footer,
+            text="Reset to Defaults",
+            width=140,
+            **get_button_style("ghost"),
+            command=self.reset_defaults,
+        ).pack(side="left")
+
+    def _show_section(self, section_id):
+        """Show a specific section in the content area."""
+        # Update nav item states
+        for nav_id, nav_item in self.nav_items.items():
+            nav_item.set_active(nav_id == section_id)
+
+        # Hide all sections
+        for section in self.sections.values():
+            section.pack_forget()
+
+        # Show selected section
+        if section_id in self.sections:
+            self.sections[section_id].pack(fill="both", expand=True)
+
+        # Update header
+        titles = {
+            "general": "General",
+            "audio": "Audio",
+            "recognition": "Recognition",
+            "text": "Text Processing",
+            "advanced": "Advanced",
+            "about": "About",
+        }
+        self.section_title.configure(text=titles.get(section_id, section_id.title()))
+        self.current_section = section_id
+
+    def _create_general_section(self):
+        """Create the General settings section."""
+        section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        self.sections["general"] = section
+
+        # Recording card
+        recording_card = Card(section, title="Recording")
+        recording_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
         # Hotkey
-        ttk.Label(main_frame, text="Hotkey:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        hotkey_frame = ttk.Frame(main_frame)
-        hotkey_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
-        self.hotkey_capture = HotkeyCapture(hotkey_frame, self.config["hotkey"])
-        self.hotkey_capture.frame.pack(side=tk.LEFT)
-        hotkey_help = ttk.Label(hotkey_frame, text="?", font=("", 9, "bold"),
-                                foreground=SLATE_500, cursor="question_arrow")
-        hotkey_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(hotkey_help, "Recommended Hotkeys:\n\n"
-                            "SINGLE KEYS (easiest):\n"
-                            "• Scroll Lock - never conflicts\n"
-                            "• Pause/Break - never used\n"
-                            "• Insert - rarely used\n\n"
-                            "NUMPAD (if available):\n"
-                            "• Numpad + or Numpad 0\n\n"
-                            "TWO-KEY COMBOS:\n"
-                            "• Ctrl+\\ or Ctrl+;")
+        hotkey_row = SettingRow(
+            recording_card.content_frame,
+            "Push-to-Talk Hotkey",
+            "Press and hold to record audio",
+        )
+        hotkey_row.pack(fill="x", pady=(0, 12))
+
+        self.hotkey_capture = HotkeyCapture(
+            hotkey_row.control_frame,
+            initial_hotkey=self.config.get("hotkey", "scroll_lock"),
+        )
+        self.hotkey_capture.pack()
+
+        # Recording mode
+        mode_row = SettingRow(
+            recording_card.content_frame,
+            "Recording Mode",
+            "How recording stops",
+        )
+        mode_row.pack(fill="x", pady=(0, 12))
+
+        self.mode_var = ctk.StringVar(value=self.config.get("recording_mode", "push_to_talk"))
+        mode_combo = ctk.CTkComboBox(
+            mode_row.control_frame,
+            values=["push_to_talk", "toggle", "auto_stop"],
+            variable=self.mode_var,
+            width=160,
+            **get_dropdown_style(),
+        )
+        mode_combo.pack()
 
         # Language
-        row += 1
-        ttk.Label(main_frame, text="Language:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        lang_labels = [config.LANGUAGE_LABELS.get(code, code) for code in config.LANGUAGE_OPTIONS]
-        current_lang = self.config["language"]
-        current_label = config.LANGUAGE_LABELS.get(current_lang, current_lang)
-        self.lang_var = tk.StringVar(value=current_label)
-        self.lang_combo = ttk.Combobox(main_frame, textvariable=self.lang_var,
-                                       values=lang_labels, state="readonly", width=15)
-        self.lang_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
+        lang_row = SettingRow(
+            recording_card.content_frame,
+            "Language",
+            "Primary transcription language",
+        )
+        lang_row.pack(fill="x", pady=(0, 12))
 
-        # Recording Mode
-        row += 1
-        ttk.Label(main_frame, text="Recording Mode:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.mode_var = tk.StringVar(value=self.config.get("recording_mode", "push_to_talk"))
-        mode_combo = ttk.Combobox(main_frame, textvariable=self.mode_var,
-                                  values=config.RECORDING_MODE_OPTIONS, state="readonly", width=15)
-        mode_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
-        mode_combo.bind("<<ComboboxSelected>>", self.on_mode_change)
+        self.lang_var = ctk.StringVar(
+            value=settings_logic.language_code_to_label(
+                self.config.get("language", "auto")
+            )
+        )
+        lang_combo = ctk.CTkComboBox(
+            lang_row.control_frame,
+            values=settings_logic.get_language_labels(),
+            variable=self.lang_var,
+            width=160,
+            **get_dropdown_style(),
+        )
+        lang_combo.pack()
 
-        # Mode hint
-        row += 1
-        self.mode_hint = ttk.Label(main_frame, text=self.get_mode_hint(),
-                                   font=("", 8), foreground=SLATE_500, wraplength=250)
-        self.mode_hint.grid(row=row, column=0, columnspan=2, sticky=tk.W)
-
-        # Silence timeout (only visible in auto_stop mode)
-        row += 1
-        self.silence_frame = ttk.Frame(main_frame)
-        self.silence_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-        ttk.Label(self.silence_frame, text="Silence Timeout:").pack(side=tk.LEFT)
-        self.silence_var = tk.StringVar(value=str(self.config.get("silence_duration_sec", 2.0)))
-        silence_entry = ttk.Entry(self.silence_frame, textvariable=self.silence_var, width=5)
-        silence_entry.pack(side=tk.LEFT, padx=5)
-        ttk.Label(self.silence_frame, text="seconds").pack(side=tk.LEFT)
-        self.update_silence_visibility()
+        # Output card
+        output_card = Card(section, title="Output")
+        output_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
         # Auto-paste
-        row += 1
-        autopaste_frame = ttk.Frame(main_frame)
-        autopaste_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-        self.autopaste_var = tk.BooleanVar(value=self.config.get("auto_paste", True))
-        autopaste_check = ttk.Checkbutton(autopaste_frame, text="Auto-paste after transcription",
-                                          variable=self.autopaste_var)
-        autopaste_check.pack(side=tk.LEFT)
-        autopaste_help = ttk.Label(autopaste_frame, text="?", font=("", 9, "bold"),
-                                   foreground=SLATE_500, cursor="question_arrow")
-        autopaste_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(autopaste_help, "When enabled, text is automatically typed (Ctrl+V)\n"
-                               "into whichever text field has focus after\n"
-                               "transcription.\n\n"
-                               "When disabled, text is only copied to clipboard -\n"
-                               "you must manually paste.")
+        autopaste_row = SettingRow(
+            output_card.content_frame,
+            "Auto-paste",
+            "Automatically paste transcribed text",
+        )
+        autopaste_row.pack(fill="x", pady=(0, 12))
+
+        self.autopaste_var = ctk.BooleanVar(value=self.config.get("auto_paste", True))
+        autopaste_switch = ctk.CTkSwitch(
+            autopaste_row.control_frame,
+            text="",
+            variable=self.autopaste_var,
+            **get_switch_style(),
+        )
+        autopaste_switch.pack()
 
         # Paste mode
-        row += 1
-        paste_mode_frame = ttk.Frame(main_frame)
-        paste_mode_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-        ttk.Label(paste_mode_frame, text="Paste mode:").pack(side=tk.LEFT)
-        self.paste_mode_var = tk.StringVar(value=self.config.get("paste_mode", "clipboard"))
-        paste_mode_combo = ttk.Combobox(paste_mode_frame, textvariable=self.paste_mode_var,
-                                        values=["clipboard", "direct"], width=12, state="readonly")
-        paste_mode_combo.pack(side=tk.LEFT, padx=(10, 5))
-        paste_mode_help = ttk.Label(paste_mode_frame, text="?", font=("", 9, "bold"),
-                                    foreground=SLATE_500, cursor="question_arrow")
-        paste_mode_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(paste_mode_help, "Clipboard: Uses Ctrl+V to paste. Faster for long text.\n"
-                                 "Preserves your clipboard contents (e.g. screenshots).\n\n"
-                                 "Direct: Types text character-by-character.\n"
-                                 "Never touches clipboard. Slightly slower.")
+        paste_mode_row = SettingRow(
+            output_card.content_frame,
+            "Paste Method",
+            "How text is inserted",
+        )
+        paste_mode_row.pack(fill="x", pady=(0, 12))
 
-        # Preview Window section
-        row += 1
-        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
+        self.paste_mode_var = ctk.StringVar(value=self.config.get("paste_mode", "clipboard"))
+        paste_mode_combo = ctk.CTkComboBox(
+            paste_mode_row.control_frame,
+            values=["clipboard", "type"],
+            variable=self.paste_mode_var,
+            width=120,
+            **get_dropdown_style(),
+        )
+        paste_mode_combo.pack()
 
-        row += 1
-        preview_label = ttk.Label(main_frame, text="Preview Window", font=("", 10, "bold"))
-        preview_label.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        # Preview window card
+        preview_card = Card(section, title="Preview Window")
+        preview_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
         # Preview enabled
-        row += 1
-        preview_frame = ttk.Frame(main_frame)
-        preview_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-        self.preview_enabled_var = tk.BooleanVar(value=self.config.get("preview_enabled", True))
-        preview_check = ttk.Checkbutton(preview_frame, text="Show preview overlay",
-                                        variable=self.preview_enabled_var)
-        preview_check.pack(side=tk.LEFT)
-        preview_help = ttk.Label(preview_frame, text="?", font=("", 9, "bold"),
-                                 foreground=SLATE_500, cursor="question_arrow")
-        preview_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(preview_help, "Shows a floating overlay with:\n"
-                             "• \"Recording...\" while recording (red)\n"
-                             "• \"Transcribing...\" while processing (yellow)\n"
-                             "• Transcribed text briefly (white)")
+        preview_row = SettingRow(
+            preview_card.content_frame,
+            "Show Preview",
+            "Display transcription preview overlay",
+        )
+        preview_row.pack(fill="x", pady=(0, 12))
+
+        self.preview_enabled_var = ctk.BooleanVar(
+            value=self.config.get("preview_enabled", True)
+        )
+        preview_switch = ctk.CTkSwitch(
+            preview_row.control_frame,
+            text="",
+            variable=self.preview_enabled_var,
+            **get_switch_style(),
+        )
+        preview_switch.pack()
 
         # Preview position
-        row += 1
-        position_frame = ttk.Frame(main_frame)
-        position_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
-        ttk.Label(position_frame, text="Position:").pack(side=tk.LEFT)
-        self.preview_position_var = tk.StringVar(value=self.config.get("preview_position", "bottom-right"))
-        position_options = ["bottom-right", "bottom-left", "top-right", "top-left"]
-        position_combo = ttk.Combobox(position_frame, textvariable=self.preview_position_var,
-                                      values=position_options, state="readonly", width=12)
-        position_combo.pack(side=tk.LEFT, padx=(5, 0))
+        position_row = SettingRow(
+            preview_card.content_frame,
+            "Position",
+        )
+        position_row.pack(fill="x", pady=(0, 12))
 
-        # Preview auto-hide delay
-        row += 1
-        delay_frame = ttk.Frame(main_frame)
-        delay_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
-        ttk.Label(delay_frame, text="Auto-hide delay:").pack(side=tk.LEFT)
-        self.preview_delay_var = tk.StringVar(value=str(self.config.get("preview_auto_hide_delay", 2.0)))
-        delay_entry = ttk.Entry(delay_frame, textvariable=self.preview_delay_var, width=5)
-        delay_entry.pack(side=tk.LEFT, padx=(5, 0))
-        ttk.Label(delay_frame, text="seconds").pack(side=tk.LEFT, padx=(5, 0))
-        delay_help = ttk.Label(delay_frame, text="?", font=("", 9, "bold"),
-                               foreground=SLATE_500, cursor="question_arrow")
-        delay_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(delay_help, "How long the transcribed text stays visible\n"
-                           "before the preview window disappears.\n\n"
-                           "Set to 0 to keep it visible until next recording.")
+        self.preview_position_var = ctk.StringVar(
+            value=self.config.get("preview_position", "bottom_right")
+        )
+        position_combo = ctk.CTkComboBox(
+            position_row.control_frame,
+            values=["top_left", "top_right", "bottom_left", "bottom_right", "center"],
+            variable=self.preview_position_var,
+            width=140,
+            **get_dropdown_style(),
+        )
+        position_combo.pack()
 
-        # Preview theme and font size
-        row += 1
-        theme_frame = ttk.Frame(main_frame)
-        theme_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
-        ttk.Label(theme_frame, text="Theme:").pack(side=tk.LEFT)
-        self.preview_theme_var = tk.StringVar(value=self.config.get("preview_theme", "dark"))
-        theme_combo = ttk.Combobox(theme_frame, textvariable=self.preview_theme_var,
-                                   values=config.PREVIEW_THEME_OPTIONS, state="readonly", width=8)
-        theme_combo.pack(side=tk.LEFT, padx=(5, 0))
+        # Preview theme
+        theme_row = SettingRow(
+            preview_card.content_frame,
+            "Theme",
+        )
+        theme_row.pack(fill="x", pady=(0, 12))
 
-        ttk.Label(theme_frame, text="Font size:").pack(side=tk.LEFT, padx=(15, 0))
-        self.preview_font_size_var = tk.IntVar(value=self.config.get("preview_font_size", 11))
-        font_spin = ttk.Spinbox(theme_frame, from_=config.PREVIEW_FONT_SIZE_MIN,
-                                to=config.PREVIEW_FONT_SIZE_MAX, textvariable=self.preview_font_size_var,
-                                width=5)
-        font_spin.pack(side=tk.LEFT, padx=(5, 0))
+        self.preview_theme_var = ctk.StringVar(
+            value=self.config.get("preview_theme", "dark")
+        )
+        theme_combo = ctk.CTkComboBox(
+            theme_row.control_frame,
+            values=["dark", "light"],
+            variable=self.preview_theme_var,
+            width=100,
+            **get_dropdown_style(),
+        )
+        theme_combo.pack()
+
+        # Startup card
+        startup_card = Card(section, title="Startup")
+        startup_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
         # Start with Windows
-        row += 1
-        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
-
-        row += 1
-        startup_frame = ttk.Frame(main_frame)
-        startup_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-        self.startup_var = tk.BooleanVar(value=config.get_startup_enabled())
-        startup_check = ttk.Checkbutton(startup_frame, text="Start with Windows",
-                                        variable=self.startup_var)
-        startup_check.pack(side=tk.LEFT)
-
-        # Register searchable widgets for Tab 1
-        self._register_searchable(hotkey_frame, ["hotkey", "keyboard shortcut", "key", "scroll lock", "pause"], 0, "General")
-        self._register_searchable(autopaste_frame, ["auto paste", "paste", "automatic", "typing"], 0, "General")
-        self._register_searchable(paste_mode_frame, ["paste mode", "clipboard", "direct typing"], 0, "General")
-        self._register_searchable(self.silence_frame, ["silence", "timeout", "auto stop", "duration"], 0, "General")
-        self._register_searchable(preview_frame, ["preview", "window", "overlay", "show"], 0, "General")
-        self._register_searchable(position_frame, ["preview", "position", "corner", "placement"], 0, "General")
-        self._register_searchable(delay_frame, ["preview", "auto hide", "delay", "duration"], 0, "General")
-        self._register_searchable(theme_frame, ["preview", "theme", "dark", "light", "font", "size"], 0, "General")
-        self._register_searchable(startup_frame, ["startup", "start with windows", "boot", "launch"], 0, "General")
-
-    def _create_audio_tab(self):
-        """Create Audio & Recording settings tab."""
-        container, scrollable_frame = self._create_scrollable_tab()
-        self.notebook.add(container, text="Audio & Recording")
-
-        main_frame = ttk.Frame(scrollable_frame, padding=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        row = 0
-
-        # === Section: Input Device ===
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10)
+        startup_row = SettingRow(
+            startup_card.content_frame,
+            "Start with Windows",
+            "Launch automatically on login",
         )
-        row += 1
-        ttk.Label(main_frame, text="🎤 Input Device", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        startup_row.pack(fill="x")
+
+        self.startup_var = ctk.BooleanVar(
+            value=self.config.get("start_with_windows", False)
         )
-        row += 1
-
-        # Input Device dropdown with refresh button
-        ttk.Label(main_frame, text="Input Device:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        device_frame = ttk.Frame(main_frame)
-        device_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
-        self.device_var = tk.StringVar()
-        self.device_combo = ttk.Combobox(device_frame, textvariable=self.device_var,
-                                         state="readonly", width=40)
-        self.device_combo.pack(side=tk.LEFT)
-        ttk.Button(device_frame, text="↻", width=2, command=self.refresh_devices).pack(side=tk.LEFT, padx=2)
-
-        # Populate devices and select current
-        self.refresh_devices()
-
-        # Device hint
-        row += 1
-        device_hint = ttk.Label(main_frame, text="(showing enabled devices - restart app to detect new defaults)",
-                                font=("", 8), foreground=SLATE_500)
-        device_hint.grid(row=row, column=1, sticky=tk.W)
-
-        # Sample rate
-        row += 1
-        ttk.Label(main_frame, text="Sample Rate:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.rate_var = tk.StringVar(value=str(self.config["sample_rate"]))
-        rate_entry = ttk.Entry(main_frame, textvariable=self.rate_var, width=17)
-        rate_entry.grid(row=row, column=1, sticky=tk.W, pady=5)
-
-        # === Section: Noise Gate ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        startup_switch = ctk.CTkSwitch(
+            startup_row.control_frame,
+            text="",
+            variable=self.startup_var,
+            **get_switch_style(),
         )
-        row += 1
-        ttk.Label(main_frame, text="🔇 Noise Gate", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        startup_switch.pack()
+
+    def _create_audio_section(self):
+        """Create the Audio settings section."""
+        section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        self.sections["audio"] = section
+
+        # Input device card
+        device_card = Card(section, title="Input Device")
+        device_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        # Device selection
+        device_row = SettingRow(
+            device_card.content_frame,
+            "Microphone",
+            "Select your audio input device",
         )
-        row += 1
+        device_row.pack(fill="x", pady=(0, 12))
 
-        # Noise gate checkbox with tooltip
-        noise_gate_frame = ttk.Frame(main_frame)
-        noise_gate_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-        self.noise_gate_var = tk.BooleanVar(value=self.config.get("noise_gate_enabled", True))
-        noise_gate_check = ttk.Checkbutton(noise_gate_frame, text="Enable Noise Gate",
-                                           variable=self.noise_gate_var)
-        noise_gate_check.pack(side=tk.LEFT)
-        noise_gate_help = ttk.Label(noise_gate_frame, text="?", font=("", 9, "bold"),
-                                    foreground=SLATE_500, cursor="question_arrow")
-        noise_gate_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(noise_gate_help, "Filters out audio below a threshold.\n"
-                                "Helps ignore background noise and reduce\n"
-                                "garbage transcriptions.\n\n"
-                                "Lower values = more sensitive (picks up quiet sounds)\n"
-                                "Higher values = less sensitive (only loud sounds)")
-
-        # Combined noise gate level meter with draggable threshold marker (Discord-style)
-        row += 1
-        noise_level_frame = ttk.Frame(main_frame)
-        noise_level_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
-
-        self.noise_test_btn = ttk.Button(noise_level_frame, text="Test", width=6,
-                                          command=self.toggle_noise_test)
-        self.noise_test_btn.pack(side=tk.LEFT)
-
-        # Canvas dimensions
-        self.meter_width = 200
-        self.meter_height = 20
-
-        self.noise_level_canvas = tk.Canvas(noise_level_frame, width=self.meter_width, height=self.meter_height,
-                                             bg=SLATE_700, highlightthickness=1,
-                                             highlightbackground=SLATE_600, cursor="hand2")
-        self.noise_level_canvas.pack(side=tk.LEFT, padx=5)
-
-        # Level bar (shows current audio level) - behind threshold marker
-        self.noise_level_bar = self.noise_level_canvas.create_rectangle(
-            0, 0, 0, self.meter_height, fill=SUCCESS, width=0)
-
-        # Threshold marker (vertical orange line) - draggable
-        self.noise_threshold_var = tk.IntVar(value=self.config.get("noise_gate_threshold_db", -40))
-        initial_x = self._db_to_x(self.noise_threshold_var.get())
-        self.threshold_marker = self.noise_level_canvas.create_line(
-            initial_x, 0, initial_x, self.meter_height, fill=PRIMARY_LIGHT, width=3)
-
-        # dB label
-        self.threshold_label = ttk.Label(noise_level_frame, text=f"{self.noise_threshold_var.get()} dB", width=7)
-        self.threshold_label.pack(side=tk.LEFT)
-
-        # Make threshold marker draggable
-        self.noise_level_canvas.bind("<Button-1>", self._on_threshold_click)
-        self.noise_level_canvas.bind("<B1-Motion>", self._on_threshold_drag)
-
-        # Update label when threshold changes
-        def update_threshold_label(*args):
-            self.threshold_label.config(text=f"{self.noise_threshold_var.get()} dB")
-        self.noise_threshold_var.trace_add("write", update_threshold_label)
-
-        # === Section: Audio Feedback ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        self.devices_list = settings_logic.get_input_devices()
+        display_names = [name for name, _ in self.devices_list]
+        current_device = settings_logic.get_device_display_name(
+            self.config.get("input_device"),
+            self.devices_list,
         )
-        row += 1
-        ttk.Label(main_frame, text="🔊 Audio Feedback", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+
+        self.device_var = ctk.StringVar(value=current_device)
+        self.device_combo = ctk.CTkComboBox(
+            device_row.control_frame,
+            values=display_names,
+            variable=self.device_var,
+            width=240,
+            **get_dropdown_style(),
         )
-        row += 1
-
-        # Audio feedback checkbox
-        feedback_frame = ttk.Frame(main_frame)
-        feedback_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-        self.feedback_var = tk.BooleanVar(value=self.config.get("audio_feedback", True))
-        feedback_check = ttk.Checkbutton(feedback_frame, text="Enable Audio Feedback",
-                                         variable=self.feedback_var)
-        feedback_check.pack(side=tk.LEFT)
-        feedback_help = ttk.Label(feedback_frame, text="?", font=("", 9, "bold"),
-                                  foreground=SLATE_500, cursor="question_arrow")
-        feedback_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(feedback_help, "Play sounds for different states:\n"
-                              "• Start/stop recording clicks\n"
-                              "• Processing sound while transcribing\n"
-                              "• Success chime when text is typed\n"
-                              "• Error buzz when no speech detected")
-
-        # Sound type checkboxes (indented)
-        row += 1
-        sound_options_frame = ttk.Frame(main_frame)
-        sound_options_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
-        self.sound_processing_var = tk.BooleanVar(value=self.config.get("sound_processing", True))
-        ttk.Checkbutton(sound_options_frame, text="Processing",
-                        variable=self.sound_processing_var).pack(side=tk.LEFT, padx=(0, 10))
-        self.sound_success_var = tk.BooleanVar(value=self.config.get("sound_success", True))
-        ttk.Checkbutton(sound_options_frame, text="Success",
-                        variable=self.sound_success_var).pack(side=tk.LEFT, padx=(0, 10))
-        self.sound_error_var = tk.BooleanVar(value=self.config.get("sound_error", True))
-        ttk.Checkbutton(sound_options_frame, text="Error",
-                        variable=self.sound_error_var).pack(side=tk.LEFT, padx=(0, 10))
-        self.sound_command_var = tk.BooleanVar(value=self.config.get("sound_command", True))
-        ttk.Checkbutton(sound_options_frame, text="Command",
-                        variable=self.sound_command_var).pack(side=tk.LEFT)
-
-        # Volume slider
-        row += 1
-        volume_frame = ttk.Frame(main_frame)
-        volume_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2, padx=(20, 0))
-        ttk.Label(volume_frame, text="Volume:").pack(side=tk.LEFT)
-        self.volume_var = tk.DoubleVar(value=self.config.get("audio_feedback_volume", 0.3))
-        volume_scale = ttk.Scale(volume_frame, from_=0.0, to=1.0, orient=tk.HORIZONTAL,
-                                 variable=self.volume_var, length=120)
-        volume_scale.pack(side=tk.LEFT, padx=5)
-        self.volume_label = ttk.Label(volume_frame, text=f"{int(self.volume_var.get() * 100)}%", width=5)
-        self.volume_label.pack(side=tk.LEFT)
-
-        # Update label when slider moves
-        def update_volume_label(*args):
-            self.volume_label.config(text=f"{int(self.volume_var.get() * 100)}%")
-        self.volume_var.trace_add("write", update_volume_label)
-
-        # Register searchable widgets for Tab 2
-        self._register_searchable(device_frame, ["input device", "microphone", "audio input"], 1, "Audio & Recording")
-        self._register_searchable(noise_gate_frame, ["noise gate", "threshold", "filter", "background noise"], 1, "Audio & Recording")
-        self._register_searchable(noise_level_frame, ["noise", "level", "meter", "test", "db"], 1, "Audio & Recording")
-        self._register_searchable(feedback_frame, ["audio feedback", "sounds", "beep", "chime"], 1, "Audio & Recording")
-        self._register_searchable(sound_options_frame, ["processing", "success", "error", "command", "sound"], 1, "Audio & Recording")
-        self._register_searchable(volume_frame, ["volume", "loudness", "sound volume"], 1, "Audio & Recording")
-
-    def _create_recognition_tab(self):
-        """Create Recognition & Model settings tab."""
-        container, scrollable_frame = self._create_scrollable_tab()
-        self.notebook.add(container, text="Recognition & Model")
-
-        main_frame = ttk.Frame(scrollable_frame, padding=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        row = 0
-
-        # === Section: Model & Processing ===
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10)
-        )
-        row += 1
-        ttk.Label(main_frame, text="🧠 Model & Processing", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
-        )
-        row += 1
-
-        # Model Size
-        ttk.Label(main_frame, text="Model Size:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        model_frame = ttk.Frame(main_frame)
-        model_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
-        self.model_var = tk.StringVar(value=self.config["model_size"])
-        model_combo = ttk.Combobox(model_frame, textvariable=self.model_var,
-                                   values=config.MODEL_OPTIONS, state="readonly", width=15)
-        model_combo.pack(side=tk.LEFT)
-        model_help = ttk.Label(model_frame, text="?", font=("", 9, "bold"),
-                               foreground=SLATE_500, cursor="question_arrow")
-        model_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(model_help, "tiny.en    - Fastest, basic accuracy\n"
-                           "base.en   - Fast, good accuracy\n"
-                           "small.en  - Balanced speed/accuracy\n"
-                           "medium.en - Slowest, best accuracy")
-
-        # Processing Mode (combined device + compute type)
-        row += 1
-        ttk.Label(main_frame, text="Processing:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        processing_frame = ttk.Frame(main_frame)
-        processing_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
-        self.processing_mode_var = tk.StringVar(value=self.config.get("processing_mode", "auto"))
-        # Create display values for the combobox
-        display_values = [config.PROCESSING_MODE_LABELS[m] for m in config.PROCESSING_MODE_OPTIONS]
-        processing_combo = ttk.Combobox(processing_frame, textvariable=self.processing_mode_var,
-                                        values=display_values, state="readonly", width=14)
-        # Set display value based on stored mode
-        current_mode = self.config.get("processing_mode", "auto")
-        processing_combo.set(config.PROCESSING_MODE_LABELS.get(current_mode, "Auto"))
-        processing_combo.pack(side=tk.LEFT)
-        processing_help = ttk.Label(processing_frame, text="?", font=("", 9, "bold"),
-                                    foreground=SLATE_500, cursor="question_arrow")
-        processing_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(processing_help, "Auto          - GPU if available, else CPU (recommended)\n"
-                                "CPU           - Always use CPU (slower, reliable)\n"
-                                "GPU - Balanced - Fast + accurate (float16)\n"
-                                "GPU - Quality  - Highest quality (float32, slower)")
-        self.processing_combo = processing_combo
-
-        # Bind change event for warning updates
-        processing_combo.bind("<<ComboboxSelected>>", self.on_gpu_setting_change)
-
-        # GPU Status Section
-        row += 1
-        gpu_status_frame = ttk.Frame(main_frame)
-        gpu_status_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(10, 5))
-
-        ttk.Label(gpu_status_frame, text="GPU Status:").pack(side=tk.LEFT)
-
-        # Status indicator dot (using Unicode circle)
-        self.gpu_status_dot = ttk.Label(gpu_status_frame, text="\u25cf", font=("", 12))
-        self.gpu_status_dot.pack(side=tk.LEFT, padx=(5, 2))
-
-        # Status text
-        self.gpu_status_label = ttk.Label(gpu_status_frame, text="Checking...")
-        self.gpu_status_label.pack(side=tk.LEFT)
+        self.device_combo.pack()
 
         # Refresh button
-        refresh_btn = ttk.Button(gpu_status_frame, text="\u21bb", width=3, command=self.refresh_gpu_status)
-        refresh_btn.pack(side=tk.LEFT, padx=(10, 0))
-        Tooltip(refresh_btn, "Refresh GPU status")
+        refresh_row = ctk.CTkFrame(device_card.content_frame, fg_color="transparent")
+        refresh_row.pack(fill="x", pady=(0, 12))
 
-        # GPU details row (GPU name or reason for unavailability)
-        row += 1
-        self.gpu_details_frame = ttk.Frame(main_frame)
-        self.gpu_details_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, padx=(85, 0))
-        self.gpu_details_label = ttk.Label(self.gpu_details_frame, text="", font=("", 8), foreground=SLATE_500)
-        self.gpu_details_label.pack(side=tk.LEFT)
+        ctk.CTkButton(
+            refresh_row,
+            text="Refresh Devices",
+            width=120,
+            **get_button_style("secondary"),
+            command=self.refresh_devices,
+        ).pack(side="left")
 
-        # Install GPU Support button row (only visible when needed)
-        row += 1
-        self.install_gpu_frame = ttk.Frame(main_frame)
-        self.install_gpu_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-        self.install_gpu_btn = ttk.Button(self.install_gpu_frame, text="Install GPU Support",
-                                          command=self.install_gpu_support)
-        self.install_gpu_btn.pack(side=tk.LEFT)
-        install_help = ttk.Label(self.install_gpu_frame, text="?", font=("", 9, "bold"),
-                                 foreground=SLATE_500, cursor="question_arrow")
-        install_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(install_help, "Downloads and installs NVIDIA CUDA libraries\n"
-                             "for GPU acceleration (~2-3 GB download).\n\n"
-                             "Requires: NVIDIA GPU with CUDA support")
-
-        # GPU warning label (for incompatible settings)
-        row += 1
-        self.gpu_warning_frame = ttk.Frame(main_frame)
-        self.gpu_warning_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W)
-        self.gpu_warning_label = ttk.Label(self.gpu_warning_frame, text="", foreground=WARNING, font=("", 8))
-        self.gpu_warning_label.pack(side=tk.LEFT)
-
-        # Initialize GPU status display
-        self.cuda_available = False
-        self.cuda_libs_installed = True  # Assume installed until we check
-        self.refresh_gpu_status()
-
-        # === Section: Translation ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        # Sample rate
+        rate_row = SettingRow(
+            device_card.content_frame,
+            "Sample Rate",
+            "Audio sample rate in Hz",
         )
-        row += 1
-        ttk.Label(main_frame, text="🌐 Translation", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        rate_row.pack(fill="x")
+
+        self.rate_var = ctk.StringVar(value=str(self.config.get("sample_rate", 16000)))
+        rate_combo = ctk.CTkComboBox(
+            rate_row.control_frame,
+            values=["8000", "16000", "22050", "44100", "48000"],
+            variable=self.rate_var,
+            width=100,
+            **get_dropdown_style(),
         )
-        row += 1
+        rate_combo.pack()
 
-        # Translation Mode
-        self.translation_enabled_var = tk.BooleanVar(value=self.config.get("translation_enabled", False))
-        trans_check = ttk.Checkbutton(main_frame, text="Translation Mode (speak one language, output English)",
-                                      variable=self.translation_enabled_var,
-                                      command=self.on_translation_toggle)
-        trans_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
+        # Noise gate card
+        gate_card = Card(section, title="Noise Gate")
+        gate_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
-        # Translation Source Language
-        row += 1
-        ttk.Label(main_frame, text="Source Language:").grid(row=row, column=0, sticky=tk.W, pady=5, padx=(20, 0))
-        # Use friendly labels in dropdown
-        lang_labels = [config.LANGUAGE_LABELS.get(code, code) for code in config.LANGUAGE_OPTIONS]
-        current_trans_lang = self.config.get("translation_source_language", "auto")
-        current_trans_label = config.LANGUAGE_LABELS.get(current_trans_lang, current_trans_lang)
-        self.trans_lang_var = tk.StringVar(value=current_trans_label)
-        self.trans_lang_combo = ttk.Combobox(main_frame, textvariable=self.trans_lang_var,
-                                             values=lang_labels, state="readonly", width=15)
-        self.trans_lang_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
-
-        # Update initial state
-        self.on_translation_toggle()
-
-        # === Section: Custom Vocabulary ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        # Enable noise gate
+        gate_enable_row = SettingRow(
+            gate_card.content_frame,
+            "Enable Noise Gate",
+            "Filter out background noise below threshold",
         )
-        row += 1
-        ttk.Label(main_frame, text="📝 Custom Vocabulary", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        gate_enable_row.pack(fill="x", pady=(0, 12))
+
+        self.noise_gate_var = ctk.BooleanVar(
+            value=self.config.get("noise_gate_enabled", False)
         )
-        row += 1
-
-        # Vocabulary explanation
-        vocab_label_frame = ttk.Frame(main_frame)
-        vocab_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
-        ttk.Label(vocab_label_frame, text="Add names, jargon, and acronyms for better recognition").pack(side=tk.LEFT)
-        vocab_help = ttk.Label(vocab_label_frame, text="?", font=("", 9, "bold"),
-                               foreground=SLATE_500, cursor="question_arrow")
-        vocab_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(vocab_help, "Add names, jargon, and acronyms for better recognition:\n\n"
-                           "TensorFlow, Kubernetes, HIPAA\n"
-                           "Dr. Smith, ChatGPT, PyTorch\n"
-                           "GitHub, OpenAI, FastAPI")
-
-        # Vocabulary list
-        row += 1
-        vocab_frame = ttk.Frame(main_frame)
-        vocab_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-
-        self.vocab_listbox = tk.Listbox(vocab_frame, width=50, height=3, selectmode=tk.SINGLE)
-        self.vocab_listbox.pack(side=tk.LEFT)
-        self.custom_vocabulary = self.config.get("custom_vocabulary", []).copy()
-        self._refresh_vocab_listbox()
-
-        vocab_btn_frame = ttk.Frame(vocab_frame)
-        vocab_btn_frame.pack(side=tk.LEFT, padx=5)
-        ttk.Button(vocab_btn_frame, text="Add", width=6, command=self.add_vocab_entry).pack(pady=1)
-        ttk.Button(vocab_btn_frame, text="Remove", width=6, command=self.remove_vocab_entry).pack(pady=1)
-
-        # Register searchable widgets for Tab 3
-        self._register_searchable(model_frame, ["model", "size", "tiny", "base", "small", "medium", "accuracy"], 2, "Recognition & Model")
-        self._register_searchable(processing_frame, ["processing", "cpu", "gpu", "cuda", "device", "compute"], 2, "Recognition & Model")
-        self._register_searchable(gpu_status_frame, ["gpu", "status", "cuda", "graphics card"], 2, "Recognition & Model")
-        self._register_searchable(self.install_gpu_frame, ["install", "gpu support", "cuda", "nvidia"], 2, "Recognition & Model")
-        self._register_searchable(vocab_frame, ["vocabulary", "custom", "jargon", "names", "acronyms"], 2, "Recognition & Model")
-
-    def _create_text_tab(self):
-        """Create Text Processing settings tab."""
-        container, scrollable_frame = self._create_scrollable_tab()
-        self.notebook.add(container, text="Text Processing")
-
-        main_frame = ttk.Frame(scrollable_frame, padding=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        row = 0
-
-        # === Section: Voice Commands ===
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10)
+        gate_switch = ctk.CTkSwitch(
+            gate_enable_row.control_frame,
+            text="",
+            variable=self.noise_gate_var,
+            **get_switch_style(),
         )
-        row += 1
-        ttk.Label(main_frame, text="🎙️ Voice Commands", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        gate_switch.pack()
+
+        # Threshold slider
+        threshold_row = SettingRow(
+            gate_card.content_frame,
+            "Threshold",
+            "Noise gate threshold in dB",
         )
-        row += 1
+        threshold_row.pack(fill="x", pady=(0, 12))
 
-        # Voice commands checkbox
-        self.voice_commands_var = tk.BooleanVar(value=self.config.get("voice_commands_enabled", True))
-        voice_cmd_frame = ttk.Frame(main_frame)
-        voice_cmd_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-        voice_cmd_check = ttk.Checkbutton(voice_cmd_frame, text="Voice commands (period, new line, etc.)",
-                                          variable=self.voice_commands_var)
-        voice_cmd_check.pack(side=tk.LEFT)
-        voice_cmd_help = ttk.Label(voice_cmd_frame, text="?", font=("", 9, "bold"),
-                                   foreground=SLATE_500, cursor="question_arrow")
-        voice_cmd_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(voice_cmd_help, "Converts spoken commands to punctuation:\n\n"
-                               "\"period\" or \"full stop\" → .\n"
-                               "\"comma\" → ,\n"
-                               "\"question mark\" → ?\n"
-                               "\"exclamation point\" → !\n"
-                               "\"new line\" → line break\n"
-                               "\"new paragraph\" → double line break")
+        threshold_control = ctk.CTkFrame(threshold_row.control_frame, fg_color="transparent")
+        threshold_control.pack()
 
-        # Scratch that checkbox (indented under voice commands)
-        row += 1
-        self.scratch_that_var = tk.BooleanVar(value=self.config.get("scratch_that_enabled", True))
-        scratch_frame = ttk.Frame(main_frame)
-        scratch_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-        ttk.Label(scratch_frame, text="    ").pack(side=tk.LEFT)  # Indent
-        scratch_check = ttk.Checkbutton(scratch_frame, text="\"Scratch that\" deletes last transcription",
-                                        variable=self.scratch_that_var)
-        scratch_check.pack(side=tk.LEFT)
-
-        # === Section: Filler Removal ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        self.noise_threshold_var = ctk.IntVar(
+            value=self.config.get("noise_gate_threshold_db", -40)
         )
-        row += 1
-        ttk.Label(main_frame, text="🚫 Filler Removal", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        self.threshold_slider = ctk.CTkSlider(
+            threshold_control,
+            from_=-60,
+            to=-20,
+            variable=self.noise_threshold_var,
+            width=200,
+            button_color=PRIMARY,
+            button_hover_color=PRIMARY_LIGHT,
+            progress_color=PRIMARY,
         )
-        row += 1
+        self.threshold_slider.pack(side="left")
 
-        # Filler removal checkbox
-        self.filler_var = tk.BooleanVar(value=self.config.get("filler_removal_enabled", True))
-        filler_frame = ttk.Frame(main_frame)
-        filler_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-        filler_check = ttk.Checkbutton(filler_frame, text="Remove filler words (um, uh, etc.)",
-                                       variable=self.filler_var)
-        filler_check.pack(side=tk.LEFT)
-        filler_help = ttk.Label(filler_frame, text="?", font=("", 9, "bold"),
-                                foreground=SLATE_500, cursor="question_arrow")
-        filler_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(filler_help, "Removes common filler words:\num, uh, er, ah, hmm\nyou know, I mean, sort of, kind of")
-
-        # Aggressive filler removal (indented)
-        row += 1
-        self.filler_aggressive_var = tk.BooleanVar(value=self.config.get("filler_removal_aggressive", False))
-        aggressive_frame = ttk.Frame(main_frame)
-        aggressive_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-        ttk.Label(aggressive_frame, text="    ").pack(side=tk.LEFT)  # Indent
-        aggressive_check = ttk.Checkbutton(aggressive_frame, text="Aggressive mode (also removes \"like\" as filler)",
-                                           variable=self.filler_aggressive_var)
-        aggressive_check.pack(side=tk.LEFT)
-
-        # === Section: Custom Dictionary ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        self.threshold_label = ctk.CTkLabel(
+            threshold_control,
+            text=f"{self.noise_threshold_var.get()} dB",
+            width=50,
+            **get_label_style("default"),
         )
-        row += 1
-        ttk.Label(main_frame, text="📖 Custom Dictionary", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        self.threshold_label.pack(side="left", padx=(8, 0))
+
+        # Update label when slider changes
+        def update_threshold_label(*args):
+            self.threshold_label.configure(text=f"{self.noise_threshold_var.get()} dB")
+        self.noise_threshold_var.trace_add("write", update_threshold_label)
+
+        # Audio level meter
+        meter_row = ctk.CTkFrame(gate_card.content_frame, fg_color="transparent")
+        meter_row.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(
+            meter_row,
+            text="Level Meter",
+            **get_label_style("default"),
+        ).pack(anchor="w", pady=(0, 4))
+
+        # Canvas for audio meter
+        self.meter_width = 300
+        self.meter_height = 20
+        self.noise_level_canvas = tk.Canvas(
+            meter_row,
+            width=self.meter_width,
+            height=self.meter_height,
+            bg=SLATE_700,
+            highlightthickness=1,
+            highlightbackground=SLATE_600,
         )
-        row += 1
+        self.noise_level_canvas.pack(anchor="w")
 
-        # Dictionary explanation
-        dict_label_frame = ttk.Frame(main_frame)
-        dict_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
-        ttk.Label(dict_label_frame, text="Replace misheard words/phrases").pack(side=tk.LEFT)
-        dict_help = ttk.Label(dict_label_frame, text="?", font=("", 9, "bold"),
-                              foreground=SLATE_500, cursor="question_arrow")
-        dict_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(dict_help, "Replace misheard words/phrases:\n\n"
-                          "\"murmur tone\" → \"MurmurTone\"\n"
-                          "\"pie torch\" → \"PyTorch\"\n"
-                          "\"J R R\" → \"J.R.R.\"")
-
-        # Dictionary list
-        row += 1
-        dict_frame = ttk.Frame(main_frame)
-        dict_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-
-        self.dict_listbox = tk.Listbox(dict_frame, width=50, height=3, selectmode=tk.SINGLE)
-        self.dict_listbox.pack(side=tk.LEFT)
-        self.custom_dictionary = self.config.get("custom_dictionary", []).copy()
-        self._refresh_dict_listbox()
-
-        dict_btn_frame = ttk.Frame(dict_frame)
-        dict_btn_frame.pack(side=tk.LEFT, padx=5)
-        ttk.Button(dict_btn_frame, text="Add", width=6, command=self.add_dict_entry).pack(pady=1)
-        ttk.Button(dict_btn_frame, text="Remove", width=6, command=self.remove_dict_entry).pack(pady=1)
-
-        # === Section: Custom Commands ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        # Level bar
+        self.noise_level_bar = self.noise_level_canvas.create_rectangle(
+            0, 0, 0, self.meter_height, fill=SUCCESS, width=0
         )
-        row += 1
-        ttk.Label(main_frame, text="⚡ Custom Commands", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+
+        # Threshold marker
+        thresh_x = settings_logic.db_to_linear(
+            self.noise_threshold_var.get(), -60, -20
+        ) * self.meter_width
+        self.threshold_marker = self.noise_level_canvas.create_line(
+            thresh_x, 0, thresh_x, self.meter_height,
+            fill=PRIMARY_LIGHT, width=3
         )
-        row += 1
 
-        # Commands explanation
-        cmd_label_frame = ttk.Frame(main_frame)
-        cmd_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
-        ttk.Label(cmd_label_frame, text="Trigger phrases that expand to text blocks").pack(side=tk.LEFT)
-        cmd_help = ttk.Label(cmd_label_frame, text="?", font=("", 9, "bold"),
-                             foreground=SLATE_500, cursor="question_arrow")
-        cmd_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(cmd_help, "Trigger phrases that expand to text blocks:\n\n"
-                         "\"email signature\" → full signature\n"
-                         "\"my address\" → your address\n"
-                         "\"bug template\" → bug report format")
+        # Test button
+        test_row = ctk.CTkFrame(gate_card.content_frame, fg_color="transparent")
+        test_row.pack(fill="x")
 
-        # Commands list
-        row += 1
-        cmd_frame = ttk.Frame(main_frame)
-        cmd_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-
-        self.cmd_listbox = tk.Listbox(cmd_frame, width=50, height=3, selectmode=tk.SINGLE)
-        self.cmd_listbox.pack(side=tk.LEFT)
-        self.custom_commands = self.config.get("custom_commands", []).copy()
-        self._refresh_cmd_listbox()
-
-        cmd_btn_frame = ttk.Frame(cmd_frame)
-        cmd_btn_frame.pack(side=tk.LEFT, padx=5)
-        ttk.Button(cmd_btn_frame, text="Add", width=6, command=self.add_cmd_entry).pack(pady=1)
-        ttk.Button(cmd_btn_frame, text="Remove", width=6, command=self.remove_cmd_entry).pack(pady=1)
-
-        # Register searchable widgets for Tab 4
-        self._register_searchable(voice_cmd_frame, ["voice commands", "punctuation", "period", "comma", "new line"], 3, "Text Processing")
-        self._register_searchable(scratch_frame, ["scratch that", "delete", "undo", "remove"], 3, "Text Processing")
-        self._register_searchable(filler_frame, ["filler", "um", "uh", "removal", "filter"], 3, "Text Processing")
-        self._register_searchable(aggressive_frame, ["aggressive", "like", "filler"], 3, "Text Processing")
-        self._register_searchable(dict_frame, ["dictionary", "replace", "words", "phrases", "corrections"], 3, "Text Processing")
-        self._register_searchable(cmd_frame, ["commands", "custom", "trigger", "expand", "shortcuts"], 3, "Text Processing")
-
-    def _create_advanced_tab(self):
-        """Create Account & Advanced settings tab."""
-        container, scrollable_frame = self._create_scrollable_tab()
-        self.notebook.add(container, text="Account & Advanced")
-
-        main_frame = ttk.Frame(scrollable_frame, padding=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        row = 0
-
-        # === Section: AI Text Cleanup ===
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10)
+        self.noise_test_btn = ctk.CTkButton(
+            test_row,
+            text="Test",
+            width=80,
+            **get_button_style("secondary"),
+            command=self.toggle_noise_test,
         )
-        row += 1
+        self.noise_test_btn.pack(side="left")
 
-        ai_label_frame = ttk.Frame(main_frame)
-        ai_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
-        ttk.Label(ai_label_frame, text="🤖 AI Text Cleanup (Ollama)", font=("", 10, "bold")).pack(side=tk.LEFT)
-        ttk.Label(ai_label_frame, text="🌟 100% Offline", font=("", 9), foreground=PRIMARY).pack(side=tk.LEFT, padx=(5, 0))
-        ai_help = ttk.Label(ai_label_frame, text="?", font=("", 9, "bold"),
-                           foreground=SLATE_500, cursor="question_arrow")
-        ai_help.pack(side=tk.LEFT, padx=5)
-        Tooltip(ai_help, "Use local AI (Ollama) to improve transcriptions:\n\n"
-                        "• Fix grammar and spelling errors\n"
-                        "• Adjust formality level\n"
-                        "• Remove redundancy\n\n"
-                        "Requires Ollama to be installed and running.\n"
-                        "Download from: https://ollama.ai/")
-        row += 1
+        # Audio feedback card
+        feedback_card = Card(section, title="Audio Feedback")
+        feedback_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
-        # Enable checkbox
-        self.ai_cleanup_var = tk.BooleanVar(value=self.config.get("ai_cleanup_enabled", False))
-        ai_check = ttk.Checkbutton(main_frame, text="Enable AI text cleanup",
-                                   variable=self.ai_cleanup_var,
-                                   command=self.on_ai_cleanup_toggle)
-        ai_check.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-
-        # Ollama status indicator
-        row += 1
-        self.ollama_status_label = ttk.Label(main_frame, text="Status: Checking...", foreground=SLATE_500)
-        self.ollama_status_label.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-
-        # Mode selector
-        row += 1
-        ttk.Label(main_frame, text="Cleanup Mode:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.ai_mode_var = tk.StringVar(value=self.config.get("ai_cleanup_mode", "grammar"))
-        mode_frame = ttk.Frame(main_frame)
-        mode_frame.grid(row=row, column=1, sticky=tk.W, pady=5)
-        ttk.Radiobutton(mode_frame, text="Grammar only", variable=self.ai_mode_var, value="grammar").pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(mode_frame, text="Formality only", variable=self.ai_mode_var, value="formality").pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(mode_frame, text="Both", variable=self.ai_mode_var, value="both").pack(side=tk.LEFT, padx=5)
-
-        # Formality level selector
-        row += 1
-        ttk.Label(main_frame, text="Formality Level:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.ai_formality_var = tk.StringVar(value=self.config.get("ai_formality_level", "professional"))
-        self.ai_formality_combo = ttk.Combobox(main_frame, textvariable=self.ai_formality_var,
-                                              values=["casual", "professional", "formal"],
-                                              state="readonly", width=15)
-        self.ai_formality_combo.grid(row=row, column=1, sticky=tk.W, pady=5)
-
-        # Model selector
-        row += 1
-        ttk.Label(main_frame, text="Ollama Model:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.ai_model_var = tk.StringVar(value=self.config.get("ollama_model", "llama3.2:3b"))
-        self.ai_model_entry = ttk.Entry(main_frame, textvariable=self.ai_model_var, width=20)
-        self.ai_model_entry.grid(row=row, column=1, sticky=tk.W, pady=5)
-
-        # Test connection button
-        row += 1
-        self.test_ollama_btn = ttk.Button(main_frame, text="Test Ollama Connection", command=self.test_ollama_connection)
-        self.test_ollama_btn.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=5)
-
-        # Update initial state
-        self.on_ai_cleanup_toggle()
-        # Check Ollama status in background
-        threading.Thread(target=self.check_ollama_status_bg, daemon=True).start()
-
-        # === Section: Transcription History ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        # Enable audio feedback
+        feedback_row = SettingRow(
+            feedback_card.content_frame,
+            "Enable Sounds",
+            "Play sounds for recording states",
         )
-        row += 1
+        feedback_row.pack(fill="x", pady=(0, 12))
 
-        history_label_frame = ttk.Frame(main_frame)
-        history_label_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
-        ttk.Label(history_label_frame, text="📜 Transcription History", font=("", 10, "bold")).pack(side=tk.LEFT)
-        ttk.Label(history_label_frame, text="(Recent transcriptions)", font=("", 9), foreground=SLATE_500).pack(side=tk.LEFT, padx=(5, 0))
-        row += 1
-
-        # History listbox with scrollbar
-        history_frame = ttk.Frame(main_frame)
-        history_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W, pady=2)
-
-        self.history_listbox = tk.Listbox(history_frame, width=60, height=4, selectmode=tk.SINGLE)
-        history_scroll = ttk.Scrollbar(history_frame, orient=tk.VERTICAL, command=self.history_listbox.yview)
-        self.history_listbox.configure(yscrollcommand=history_scroll.set)
-        self.history_listbox.pack(side=tk.LEFT)
-        history_scroll.pack(side=tk.LEFT, fill=tk.Y)
-
-        history_btn_frame = ttk.Frame(history_frame)
-        history_btn_frame.pack(side=tk.LEFT, padx=5)
-        ttk.Button(history_btn_frame, text="Refresh", width=8, command=self._refresh_history).pack(pady=1)
-        ttk.Button(history_btn_frame, text="Clear", width=8, command=self._clear_history).pack(pady=1)
-
-        self._refresh_history()
-
-        # === Section: About ===
-        row += 1
-        ttk.Separator(main_frame, orient="horizontal").grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(20, 10)
+        self.feedback_var = ctk.BooleanVar(
+            value=self.config.get("audio_feedback", True)
         )
-        row += 1
-
-        ttk.Label(main_frame, text="ℹ️ About", font=("", 10, "bold")).grid(
-            row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 10)
+        feedback_switch = ctk.CTkSwitch(
+            feedback_row.control_frame,
+            text="",
+            variable=self.feedback_var,
+            **get_switch_style(),
         )
-        row += 1
+        feedback_switch.pack()
 
-        about_frame = ttk.Frame(main_frame)
-        about_frame.grid(row=row, column=0, columnspan=2, sticky=tk.W)
+        # Volume slider
+        volume_row = SettingRow(
+            feedback_card.content_frame,
+            "Volume",
+        )
+        volume_row.pack(fill="x")
 
-        version_label = ttk.Label(about_frame, text=f"{config.APP_NAME} v{config.VERSION}",
-                                  font=("", 9), foreground=SLATE_500)
-        version_label.pack(side=tk.LEFT)
+        volume_control = ctk.CTkFrame(volume_row.control_frame, fg_color="transparent")
+        volume_control.pack()
 
-        help_link = ttk.Label(about_frame, text="Help", font=("", 9, "underline"),
-                              foreground=PRIMARY, cursor="hand2")
-        help_link.pack(side=tk.LEFT, padx=(15, 0))
-        help_link.bind("<Button-1>", lambda e: self.open_url(config.HELP_URL))
+        self.volume_var = ctk.IntVar(
+            value=self.config.get("audio_feedback_volume", 100)
+        )
+        volume_slider = ctk.CTkSlider(
+            volume_control,
+            from_=0,
+            to=100,
+            variable=self.volume_var,
+            width=150,
+            button_color=PRIMARY,
+            button_hover_color=PRIMARY_LIGHT,
+            progress_color=PRIMARY,
+        )
+        volume_slider.pack(side="left")
 
-        update_link = ttk.Label(about_frame, text="Check for Updates", font=("", 9, "underline"),
-                                foreground=PRIMARY, cursor="hand2")
-        update_link.pack(side=tk.LEFT, padx=(15, 0))
-        update_link.bind("<Button-1>", lambda e: self.open_url(config.GITHUB_REPO + "/releases"))
+        self.volume_label = ctk.CTkLabel(
+            volume_control,
+            text=f"{self.volume_var.get()}%",
+            width=40,
+            **get_label_style("default"),
+        )
+        self.volume_label.pack(side="left", padx=(8, 0))
 
-        # Register searchable widgets for Tab 5
-        self._register_searchable(ai_label_frame, ["ai", "ollama", "cleanup", "grammar", "formality", "local"], 4, "Account & Advanced")
-        self._register_searchable(mode_frame, ["cleanup mode", "grammar", "formality", "both"], 4, "Account & Advanced")
-        self._register_searchable(history_frame, ["history", "transcription", "recent", "log"], 4, "Account & Advanced")
-        self._register_searchable(about_frame, ["about", "version", "help", "updates"], 4, "Account & Advanced")
+        def update_volume_label(*args):
+            self.volume_label.configure(text=f"{self.volume_var.get()}%")
+        self.volume_var.trace_add("write", update_volume_label)
 
-    def _register_searchable(self, widget, terms, tab_index, tab_name):
-        """Register a widget in the search index.
+    def _create_recognition_section(self):
+        """Create the Recognition settings section."""
+        section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        self.sections["recognition"] = section
 
-        Args:
-            widget: The frame/widget to show/hide during search
-            terms: List of searchable strings (label text, keywords, etc.)
-            tab_index: Index of the tab containing this widget
-            tab_name: Name of the tab
-        """
-        self.search_index.append({
-            "terms": [term.lower() for term in terms],
-            "widget": widget,
-            "tab_index": tab_index,
-            "tab_name": tab_name
-        })
+        # Model card
+        model_card = Card(section, title="Whisper Model")
+        model_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
-    def _on_search_change(self, *args):
-        """Handle search text changes and filter settings."""
-        query = self.search_var.get().lower().strip()
+        # Model selection
+        model_row = SettingRow(
+            model_card.content_frame,
+            "Model Size",
+            "Larger models are more accurate but slower",
+        )
+        model_row.pack(fill="x", pady=(0, 12))
 
-        if not query:
-            # Clear search - show all widgets
-            for entry in self.search_index:
-                try:
-                    entry["widget"].grid()
-                except:
-                    pass
-            return
+        self.model_var = ctk.StringVar(value=self.config.get("model_size", "base"))
+        model_combo = ctk.CTkComboBox(
+            model_row.control_frame,
+            values=["tiny", "base", "small", "medium", "large-v2", "large-v3"],
+            variable=self.model_var,
+            width=140,
+            **get_dropdown_style(),
+        )
+        model_combo.pack()
 
-        # Filter based on query
-        first_match_tab = None
-        matches_found = False
+        # Auto-stop settings
+        autostop_row = SettingRow(
+            model_card.content_frame,
+            "Silence Duration",
+            "Seconds of silence before auto-stop",
+        )
+        autostop_row.pack(fill="x")
 
-        for entry in self.search_index:
-            # Check if any search term matches the query
-            matches = any(query in term for term in entry["terms"])
+        self.silence_var = ctk.StringVar(
+            value=str(self.config.get("silence_duration_sec", 2.0))
+        )
+        silence_entry = ctk.CTkEntry(
+            autostop_row.control_frame,
+            textvariable=self.silence_var,
+            width=80,
+            **get_entry_style(),
+        )
+        silence_entry.pack()
 
-            if matches:
-                matches_found = True
-                # Show the widget
-                try:
-                    entry["widget"].grid()
-                except:
-                    pass
+        # GPU card
+        gpu_card = Card(section, title="GPU Acceleration")
+        gpu_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
-                # Track first matching tab
-                if first_match_tab is None:
-                    first_match_tab = entry["tab_index"]
-            else:
-                # Hide the widget
-                try:
-                    entry["widget"].grid_remove()
-                except:
-                    pass
+        # GPU status
+        status_row = ctk.CTkFrame(gpu_card.content_frame, fg_color="transparent")
+        status_row.pack(fill="x", pady=(0, 12))
 
-        # Switch to first tab with matches
-        if first_match_tab is not None:
-            self.notebook.select(first_match_tab)
+        is_available, status_msg, gpu_name = settings_logic.get_cuda_status()
 
-    def get_mode_hint(self):
-        """Return description text for current recording mode."""
-        mode = self.mode_var.get()
-        if mode == "push_to_talk":
-            return "Hold hotkey to record, release to transcribe"
+        self.gpu_status = StatusIndicator(
+            status_row,
+            status="success" if is_available else "error",
+            text=gpu_name or status_msg,
+        )
+        self.gpu_status.pack(side="left")
+
+        ctk.CTkButton(
+            status_row,
+            text="Refresh",
+            width=80,
+            **get_button_style("ghost"),
+            command=self.refresh_gpu_status,
+        ).pack(side="right")
+
+        # Enable GPU
+        gpu_enable_row = SettingRow(
+            gpu_card.content_frame,
+            "Use GPU",
+            "Enable CUDA acceleration if available",
+        )
+        gpu_enable_row.pack(fill="x", pady=(0, 12))
+
+        processing_mode = self.config.get("processing_mode", "cpu")
+        gpu_enabled, compute_type = settings_logic.get_ui_from_processing_mode(processing_mode)
+
+        self.gpu_enabled_var = ctk.BooleanVar(value=gpu_enabled)
+        gpu_switch = ctk.CTkSwitch(
+            gpu_enable_row.control_frame,
+            text="",
+            variable=self.gpu_enabled_var,
+            **get_switch_style(),
+        )
+        gpu_switch.pack()
+        if not is_available:
+            gpu_switch.configure(state="disabled")
+
+        # Compute type
+        compute_row = SettingRow(
+            gpu_card.content_frame,
+            "Compute Type",
+            "Precision level (int8 = faster, float16 = more accurate)",
+        )
+        compute_row.pack(fill="x")
+
+        self.compute_type_var = ctk.StringVar(value=compute_type)
+        compute_combo = ctk.CTkComboBox(
+            compute_row.control_frame,
+            values=["int8", "float16"],
+            variable=self.compute_type_var,
+            width=100,
+            **get_dropdown_style(),
+        )
+        compute_combo.pack()
+
+        # Translation card
+        translation_card = Card(section, title="Translation")
+        translation_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        # Enable translation
+        trans_enable_row = SettingRow(
+            translation_card.content_frame,
+            "Enable Translation",
+            "Translate speech to English",
+        )
+        trans_enable_row.pack(fill="x", pady=(0, 12))
+
+        self.translation_enabled_var = ctk.BooleanVar(
+            value=self.config.get("translation_enabled", False)
+        )
+        trans_switch = ctk.CTkSwitch(
+            trans_enable_row.control_frame,
+            text="",
+            variable=self.translation_enabled_var,
+            **get_switch_style(),
+        )
+        trans_switch.pack()
+
+        # Source language
+        trans_lang_row = SettingRow(
+            translation_card.content_frame,
+            "Source Language",
+            "Language being spoken",
+        )
+        trans_lang_row.pack(fill="x")
+
+        self.trans_lang_var = ctk.StringVar(
+            value=settings_logic.language_code_to_label(
+                self.config.get("translation_source_language", "auto")
+            )
+        )
+        trans_lang_combo = ctk.CTkComboBox(
+            trans_lang_row.control_frame,
+            values=settings_logic.get_language_labels(),
+            variable=self.trans_lang_var,
+            width=160,
+            **get_dropdown_style(),
+        )
+        trans_lang_combo.pack()
+
+    def _create_text_section(self):
+        """Create the Text Processing settings section."""
+        section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        self.sections["text"] = section
+
+        # Voice commands card
+        commands_card = Card(section, title="Voice Commands")
+        commands_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        # Enable voice commands
+        cmd_enable_row = SettingRow(
+            commands_card.content_frame,
+            "Enable Voice Commands",
+            'Execute commands like "new line", "period"',
+        )
+        cmd_enable_row.pack(fill="x", pady=(0, 12))
+
+        self.voice_commands_var = ctk.BooleanVar(
+            value=self.config.get("voice_commands_enabled", True)
+        )
+        cmd_switch = ctk.CTkSwitch(
+            cmd_enable_row.control_frame,
+            text="",
+            variable=self.voice_commands_var,
+            **get_switch_style(),
+        )
+        cmd_switch.pack()
+
+        # Scratch that
+        scratch_row = SettingRow(
+            commands_card.content_frame,
+            '"Scratch That" Command',
+            "Delete the last transcription",
+        )
+        scratch_row.pack(fill="x")
+
+        self.scratch_that_var = ctk.BooleanVar(
+            value=self.config.get("scratch_that_enabled", True)
+        )
+        scratch_switch = ctk.CTkSwitch(
+            scratch_row.control_frame,
+            text="",
+            variable=self.scratch_that_var,
+            **get_switch_style(),
+        )
+        scratch_switch.pack()
+
+        # Filler removal card
+        filler_card = Card(section, title="Filler Word Removal")
+        filler_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        # Enable filler removal
+        filler_enable_row = SettingRow(
+            filler_card.content_frame,
+            "Remove Filler Words",
+            'Remove "um", "uh", "like", etc.',
+        )
+        filler_enable_row.pack(fill="x", pady=(0, 12))
+
+        self.filler_var = ctk.BooleanVar(
+            value=self.config.get("filler_removal_enabled", False)
+        )
+        filler_switch = ctk.CTkSwitch(
+            filler_enable_row.control_frame,
+            text="",
+            variable=self.filler_var,
+            **get_switch_style(),
+        )
+        filler_switch.pack()
+
+        # Aggressive mode
+        aggressive_row = SettingRow(
+            filler_card.content_frame,
+            "Aggressive Mode",
+            "Remove more hesitation patterns",
+        )
+        aggressive_row.pack(fill="x")
+
+        self.filler_aggressive_var = ctk.BooleanVar(
+            value=self.config.get("filler_removal_aggressive", False)
+        )
+        aggressive_switch = ctk.CTkSwitch(
+            aggressive_row.control_frame,
+            text="",
+            variable=self.filler_aggressive_var,
+            **get_switch_style(),
+        )
+        aggressive_switch.pack()
+
+        # Dictionary card
+        dict_card = Card(section, title="Custom Dictionary")
+        dict_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        dict_info = ctk.CTkLabel(
+            dict_card.content_frame,
+            text="Add word replacements and custom vocabulary for better recognition.",
+            **get_label_style("help"),
+            wraplength=400,
+        )
+        dict_info.pack(anchor="w", pady=(0, 8))
+
+        dict_btn_row = ctk.CTkFrame(dict_card.content_frame, fg_color="transparent")
+        dict_btn_row.pack(fill="x")
+
+        ctk.CTkButton(
+            dict_btn_row,
+            text="Edit Dictionary",
+            width=120,
+            **get_button_style("secondary"),
+            command=self._open_dictionary_editor,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            dict_btn_row,
+            text="Edit Vocabulary",
+            width=120,
+            **get_button_style("secondary"),
+            command=self._open_vocabulary_editor,
+        ).pack(side="left")
+
+    def _create_advanced_section(self):
+        """Create the Advanced settings section."""
+        section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        self.sections["advanced"] = section
+
+        # AI Cleanup card
+        ai_card = Card(section, title="AI Text Cleanup")
+        ai_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        # Enable AI cleanup
+        ai_enable_row = SettingRow(
+            ai_card.content_frame,
+            "Enable AI Cleanup",
+            "Use local LLM to polish transcriptions",
+        )
+        ai_enable_row.pack(fill="x", pady=(0, 12))
+
+        self.ai_cleanup_var = ctk.BooleanVar(
+            value=self.config.get("ai_cleanup_enabled", False)
+        )
+        ai_switch = ctk.CTkSwitch(
+            ai_enable_row.control_frame,
+            text="",
+            variable=self.ai_cleanup_var,
+            **get_switch_style(),
+        )
+        ai_switch.pack()
+
+        # Ollama status
+        status_row = ctk.CTkFrame(ai_card.content_frame, fg_color="transparent")
+        status_row.pack(fill="x", pady=(0, 12))
+
+        self.ollama_status = StatusIndicator(
+            status_row,
+            status="inactive",
+            text="Checking Ollama...",
+        )
+        self.ollama_status.pack(side="left")
+
+        ctk.CTkButton(
+            status_row,
+            text="Check",
+            width=70,
+            **get_button_style("ghost"),
+            command=lambda: self.check_ollama_status_bg(),
+        ).pack(side="right")
+
+        # Check Ollama status on load
+        self.check_ollama_status_bg()
+
+        # AI Mode
+        ai_mode_row = SettingRow(
+            ai_card.content_frame,
+            "Cleanup Mode",
+        )
+        ai_mode_row.pack(fill="x", pady=(0, 12))
+
+        self.ai_mode_var = ctk.StringVar(value=self.config.get("ai_cleanup_mode", "grammar"))
+        ai_mode_combo = ctk.CTkComboBox(
+            ai_mode_row.control_frame,
+            values=["grammar", "professional", "casual", "creative"],
+            variable=self.ai_mode_var,
+            width=140,
+            **get_dropdown_style(),
+        )
+        ai_mode_combo.pack()
+
+        # Formality
+        formality_row = SettingRow(
+            ai_card.content_frame,
+            "Formality Level",
+        )
+        formality_row.pack(fill="x", pady=(0, 12))
+
+        self.ai_formality_var = ctk.StringVar(
+            value=self.config.get("ai_formality_level", "neutral")
+        )
+        formality_combo = ctk.CTkComboBox(
+            formality_row.control_frame,
+            values=["casual", "neutral", "formal"],
+            variable=self.ai_formality_var,
+            width=100,
+            **get_dropdown_style(),
+        )
+        formality_combo.pack()
+
+        # Model selection
+        model_row = SettingRow(
+            ai_card.content_frame,
+            "Ollama Model",
+        )
+        model_row.pack(fill="x")
+
+        self.ai_model_var = ctk.StringVar(
+            value=self.config.get("ollama_model", "llama3.2")
+        )
+        model_entry = ctk.CTkEntry(
+            model_row.control_frame,
+            textvariable=self.ai_model_var,
+            width=140,
+            **get_entry_style(),
+        )
+        model_entry.pack()
+
+        # History card
+        history_card = Card(section, title="Transcription History")
+        history_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        history_info = ctk.CTkLabel(
+            history_card.content_frame,
+            text="Recent transcriptions are stored for review.",
+            **get_label_style("help"),
+        )
+        history_info.pack(anchor="w", pady=(0, 8))
+
+        ctk.CTkButton(
+            history_card.content_frame,
+            text="View History",
+            width=120,
+            **get_button_style("secondary"),
+            command=self._open_history_viewer,
+        ).pack(anchor="w")
+
+    def _create_about_section(self):
+        """Create the About section."""
+        section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        self.sections["about"] = section
+
+        # App info card
+        info_card = Card(section, title="Application Info")
+        info_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        # Logo/title area
+        title_frame = ctk.CTkFrame(info_card.content_frame, fg_color="transparent")
+        title_frame.pack(fill="x", pady=(0, 16))
+
+        ctk.CTkLabel(
+            title_frame,
+            text=config.APP_NAME,
+            font=("", 24, "bold"),
+            text_color=PRIMARY,
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            title_frame,
+            text="100% Offline Voice Typing",
+            **get_label_style("help"),
+        ).pack(anchor="w")
+
+        # Version info
+        info_grid = ctk.CTkFrame(info_card.content_frame, fg_color="transparent")
+        info_grid.pack(fill="x")
+
+        info_items = [
+            ("Version", config.VERSION),
+            ("Build", "Desktop"),
+            ("Platform", "Windows"),
+        ]
+
+        for label, value in info_items:
+            row = ctk.CTkFrame(info_grid, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+
+            ctk.CTkLabel(
+                row,
+                text=label,
+                width=100,
+                anchor="w",
+                **get_label_style("help"),
+            ).pack(side="left")
+
+            ctk.CTkLabel(
+                row,
+                text=value,
+                anchor="w",
+                **get_label_style("default"),
+            ).pack(side="left")
+
+        # License card
+        license_card = Card(section, title="License")
+        license_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+
+        license_status = license.get_license_status_info(self.config)
+        if license_status.get("status") == "active":
+            status_text = f"Licensed: {license_status.get('status_message', 'Active')}"
+            status_color = SUCCESS
+        elif license_status.get("status") == "trial":
+            status_text = license_status.get("status_message", "Trial Mode")
+            status_color = WARNING
         else:
-            return "Press hotkey to start, auto-stops after silence"
+            status_text = license_status.get("status_message", "Free Version")
+            status_color = SLATE_500
 
-    def on_mode_change(self, event=None):
-        """Update UI when recording mode changes."""
-        self.mode_hint.config(text=self.get_mode_hint())
-        self.update_silence_visibility()
+        ctk.CTkLabel(
+            license_card.content_frame,
+            text=status_text,
+            text_color=status_color,
+        ).pack(anchor="w", pady=(0, 8))
 
-    def update_silence_visibility(self):
-        """Show/hide silence settings based on mode."""
-        if self.mode_var.get() == "auto_stop":
-            self.silence_frame.grid()
-        else:
-            self.silence_frame.grid_remove()
+        license_btn_row = ctk.CTkFrame(license_card.content_frame, fg_color="transparent")
+        license_btn_row.pack(fill="x")
 
-    def on_translation_toggle(self):
-        """Update UI when translation mode is toggled."""
-        translation_enabled = self.translation_enabled_var.get()
-        if translation_enabled:
-            # Disable regular language dropdown when translation is enabled
-            self.lang_combo.config(state="disabled")
-            self.trans_lang_combo.config(state="readonly")
-        else:
-            # Enable regular language dropdown when translation is disabled
-            self.lang_combo.config(state="readonly")
-            self.trans_lang_combo.config(state="disabled")
+        ctk.CTkButton(
+            license_btn_row,
+            text="Enter License Key",
+            width=140,
+            **get_button_style("primary"),
+            command=self._open_license_dialog,
+        ).pack(side="left", padx=(0, 8))
 
-    def refresh_gpu_status(self):
-        """Update the GPU status indicator."""
-        is_available, status_msg, detail = get_cuda_status()
-        self.cuda_available = is_available
-        self.cuda_libs_installed = status_msg != "GPU libraries not installed"
+        ctk.CTkButton(
+            license_btn_row,
+            text="Buy License",
+            width=100,
+            **get_button_style("secondary"),
+            command=lambda: webbrowser.open("https://murmurtone.com/pricing"),
+        ).pack(side="left")
 
-        if is_available:
-            # Green status
-            self.gpu_status_dot.config(foreground=SUCCESS)
-            self.gpu_status_label.config(text=status_msg, foreground=SUCCESS)
-            if detail:
-                self.gpu_details_label.config(text=f"\u2514 {detail}")
-            else:
-                self.gpu_details_label.config(text="")
-            # Hide install button when CUDA is available
-            self.install_gpu_frame.grid_remove()
-        else:
-            # Red status
-            self.gpu_status_dot.config(foreground=ERROR)
-            self.gpu_status_label.config(text=status_msg, foreground=ERROR)
-            if detail:
-                self.gpu_details_label.config(text=f"\u2514 {detail}")
-            else:
-                self.gpu_details_label.config(text="")
-            # Show install button only if libraries aren't installed
-            if not self.cuda_libs_installed:
-                self.install_gpu_frame.grid()
-            else:
-                self.install_gpu_frame.grid_remove()
+        # Links card
+        links_card = Card(section, title="Links")
+        links_card.pack(fill="x", pady=(0, PAD_DEFAULT))
 
-        # Update warnings based on current settings
-        self.on_gpu_setting_change()
+        links = [
+            ("Website", "https://murmurtone.com"),
+            ("Documentation", "https://murmurtone.com/docs"),
+            ("Support", "https://murmurtone.com/support"),
+            ("Privacy Policy", "https://murmurtone.com/privacy"),
+            ("Terms of Service", "https://murmurtone.com/terms"),
+        ]
 
-    def on_gpu_setting_change(self, event=None):
-        """Update warnings when processing mode changes."""
-        # Get current mode from display label
-        display_value = self.processing_combo.get()
-        # Find the internal mode key
-        mode = "auto"
-        for key, label in config.PROCESSING_MODE_LABELS.items():
-            if label == display_value:
-                mode = key
-                break
+        for text, url in links:
+            link = ctk.CTkLabel(
+                links_card.content_frame,
+                text=text,
+                text_color=PRIMARY,
+                cursor="hand2",
+            )
+            link.pack(anchor="w", pady=2)
+            link.bind("<Button-1>", lambda e, u=url: webbrowser.open(u))
 
-        warnings = []
-
-        # Warn if GPU mode selected but CUDA not available
-        if mode in ("gpu-balanced", "gpu-quality") and not self.cuda_available:
-            warnings.append("\u26a0 GPU not available - will fall back to CPU")
-
-        if warnings:
-            self.gpu_warning_label.config(text="\n".join(warnings))
-            self.gpu_warning_frame.grid()
-        else:
-            self.gpu_warning_label.config(text="")
-            self.gpu_warning_frame.grid_remove()
-
-    def get_processing_mode(self):
-        """Get the internal processing mode key from the display label."""
-        display_value = self.processing_combo.get()
-        for key, label in config.PROCESSING_MODE_LABELS.items():
-            if label == display_value:
-                return key
-        return "auto"  # Default fallback
-
-    def install_gpu_support(self):
-        """Install GPU dependencies via pip using a modal dialog."""
-        # Find requirements-gpu.txt relative to this file or the app directory
-        app_dir = os.path.dirname(os.path.abspath(__file__))
-        req_file = os.path.join(app_dir, "requirements-gpu.txt")
-
-        if not os.path.exists(req_file):
-            messagebox.showerror("File Not Found",
-                               f"Could not find requirements-gpu.txt\n\n"
-                               f"Expected at: {req_file}\n\n"
-                               f"Please install manually:\n"
-                               f"pip install -r requirements-gpu.txt")
-            return
-
-        # Confirm with user
-        if not messagebox.askyesno("Install GPU Support",
-                                   "This will download and install NVIDIA CUDA libraries.\n\n"
-                                   "Download size: ~2-3 GB\n"
-                                   "Requires: NVIDIA GPU with CUDA support\n\n"
-                                   "Continue?",
-                                   parent=self.window):
-            return
-
-        # Create modal dialog
-        dialog = tk.Toplevel(self.window)
-        dialog.title("Installing GPU Support")
-        dialog.geometry("400x180")
-        dialog.resizable(False, False)
-        dialog.transient(self.window)
-        dialog.grab_set()  # Make it modal
-
-        # Center on parent window
-        dialog.update_idletasks()
-        x = self.window.winfo_x() + (self.window.winfo_width() - 400) // 2
-        y = self.window.winfo_y() + (self.window.winfo_height() - 180) // 2
-        dialog.geometry(f"+{x}+{y}")
-
-        # Prevent closing during install
-        dialog.protocol("WM_DELETE_WINDOW", lambda: None)
-
-        frame = ttk.Frame(dialog, padding=20)
-        frame.pack(fill=tk.BOTH, expand=True)
-
-        # Title
-        title_label = ttk.Label(frame, text="Installing NVIDIA CUDA Libraries",
-                                font=("", 11, "bold"))
-        title_label.pack(pady=(0, 15))
-
-        # Progress bar
-        progress = ttk.Progressbar(frame, mode='indeterminate', length=350)
-        progress.pack(pady=5)
-        progress.start(10)
-
-        # Status label
-        status_label = ttk.Label(frame, text="Downloading... this may take several minutes",
-                                  font=("", 9), foreground=SLATE_500)
-        status_label.pack(pady=10)
-
-        # Size hint
-        size_hint = ttk.Label(frame, text="(Download size: ~2-3 GB)",
-                              font=("", 8), foreground=SLATE_500)
-        size_hint.pack()
-
-        # Store references for the completion handler
-        self._install_dialog = dialog
-        self._install_progress = progress
-        self._install_status = status_label
-
-        def run_install():
-            try:
-                result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "-r", req_file],
-                    capture_output=True,
-                    text=True,
-                    cwd=app_dir
-                )
-                success = result.returncode == 0
-                output = result.stdout + result.stderr
-
-                # Schedule UI update on main thread
-                self.window.after(0, lambda: self.install_complete(success, output))
-            except Exception as e:
-                self.window.after(0, lambda: self.install_complete(False, str(e)))
-
-        # Run in background thread
-        thread = threading.Thread(target=run_install, daemon=True)
-        thread.start()
-
-    def install_complete(self, success, output):
-        """Handle completion of GPU installation."""
-        # Stop progress and close dialog
-        if hasattr(self, '_install_progress'):
-            self._install_progress.stop()
-        if hasattr(self, '_install_dialog') and self._install_dialog:
-            self._install_dialog.destroy()
-            self._install_dialog = None
-
-        if success:
-            # Custom dialog with Restart Now / Later buttons
-            self._show_restart_dialog()
-            # Refresh status (may still show unavailable until restart)
-            self.refresh_gpu_status()
-        else:
-            # Show error with manual instructions
-            msg = ("Installation failed.\n\n"
-                   "Try installing manually:\n"
-                   "1. Open a terminal/command prompt\n"
-                   "2. Navigate to the MurmurTone folder\n"
-                   "3. Run: pip install -r requirements-gpu.txt\n\n")
-            if output:
-                # Truncate long output
-                if len(output) > 500:
-                    output = output[:500] + "..."
-                msg += f"Error details:\n{output}"
-            messagebox.showerror("Installation Failed", msg, parent=self.window)
-
-    def _show_restart_dialog(self):
-        """Show a dialog with Restart Now / Later options."""
-        dialog = tk.Toplevel(self.window)
-        dialog.title("Installation Complete")
-        dialog.geometry("350x150")
-        dialog.resizable(False, False)
-        dialog.transient(self.window)
-        dialog.grab_set()
-
-        # Center on parent
-        dialog.update_idletasks()
-        x = self.window.winfo_x() + (self.window.winfo_width() - 350) // 2
-        y = self.window.winfo_y() + (self.window.winfo_height() - 150) // 2
-        dialog.geometry(f"+{x}+{y}")
-
-        frame = ttk.Frame(dialog, padding=20)
-        frame.pack(fill=tk.BOTH, expand=True)
-
-        # Success message
-        ttk.Label(frame, text="GPU support installed successfully!",
-                  font=("", 10, "bold")).pack(pady=(0, 10))
-        ttk.Label(frame, text="Restart MurmurTone to use GPU acceleration.",
-                  font=("", 9)).pack(pady=(0, 15))
-
-        # Button frame
-        btn_frame = ttk.Frame(frame)
-        btn_frame.pack()
-
-        def restart_now():
-            dialog.destroy()
-            self.close()
-            # Write restart signal file for parent process
-            app_dir = os.path.dirname(os.path.abspath(__file__))
-            restart_signal = os.path.join(app_dir, ".restart_signal")
-            try:
-                with open(restart_signal, "w") as f:
-                    f.write("restart")
-            except Exception:
-                pass  # Best effort
-            # Launch new instance - parent will see signal and exit
-            script = os.path.join(app_dir, "murmurtone.py")
-            subprocess.Popen([sys.executable, script], cwd=app_dir)
-
-        def later():
-            dialog.destroy()
-
-        ttk.Button(btn_frame, text="Restart Now", command=restart_now).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Later", command=later).pack(side=tk.LEFT, padx=5)
+    # =========================================================================
+    # Helper Methods
+    # =========================================================================
 
     def refresh_devices(self):
         """Refresh the list of available input devices."""
-        self.devices_list = config.get_input_devices()
+        self.devices_list = settings_logic.get_input_devices()
         display_names = [name for name, _ in self.devices_list]
+        self.device_combo.configure(values=display_names)
 
-        # Check if current saved device is available
-        saved_device = self.config.get("input_device")
-        # First item is always System Default (with device name)
-        current_selection = display_names[0] if display_names else "System Default"
+        # Check if current selection is still valid
+        current = self.device_var.get()
+        if current not in display_names:
+            if display_names:
+                self.device_var.set(display_names[0])
 
-        if saved_device is not None:
-            saved_name = saved_device.get("name") if isinstance(saved_device, dict) else saved_device
-            # Find matching device in list
-            device_available = False
-            for display_name, device_info in self.devices_list:
-                if device_info and device_info.get("name") == saved_name:
-                    current_selection = display_name
-                    device_available = True
-                    break
-            # If not available, show it as unavailable
-            if not device_available and saved_name:
-                unavailable_name = f"{saved_name} (unavailable)"
-                display_names.append(unavailable_name)
-                current_selection = unavailable_name
-
-        self.device_combo["values"] = display_names
-        self.device_var.set(current_selection)
-
-    def get_selected_device_info(self):
-        """Get the device_info dict for the currently selected device."""
-        selected = self.device_var.get()
-        if "(unavailable)" in selected:
-            # Return the original saved device
-            return self.config.get("input_device")
-        for display_name, device_info in self.devices_list:
-            if display_name == selected:
-                return device_info
-        return None  # System Default
-
-    def _db_to_x(self, db):
-        """Convert dB value (-60 to -20) to x pixel position."""
-        # Map -60 to -20 dB → 0 to meter_width pixels
-        return int((db + 60) / 40 * self.meter_width)
-
-    def _x_to_db(self, x):
-        """Convert x pixel position to dB value (-60 to -20)."""
-        # Clamp x to valid range
-        x = max(0, min(self.meter_width, x))
-        # Map 0 to meter_width pixels → -60 to -20 dB
-        return int(-60 + (x / self.meter_width) * 40)
-
-    def _on_threshold_click(self, event):
-        """Handle click on the level meter to set threshold."""
-        db = self._x_to_db(event.x)
-        self.noise_threshold_var.set(db)
-        self._update_threshold_marker_position()
-
-    def _on_threshold_drag(self, event):
-        """Handle drag on the level meter to adjust threshold."""
-        db = self._x_to_db(event.x)
-        self.noise_threshold_var.set(db)
-        self._update_threshold_marker_position()
-
-    def _update_threshold_marker_position(self):
-        """Update the threshold marker position on the canvas."""
-        x = self._db_to_x(self.noise_threshold_var.get())
-        self.noise_level_canvas.coords(self.threshold_marker, x, 0, x, self.meter_height)
+    def refresh_gpu_status(self):
+        """Refresh GPU status display."""
+        is_available, status_msg, gpu_name = settings_logic.get_cuda_status()
+        self.gpu_status.set_status(
+            "success" if is_available else "error",
+            gpu_name or status_msg,
+        )
 
     def toggle_noise_test(self):
         """Start or stop the noise gate level test."""
@@ -1573,122 +1525,159 @@ class SettingsWindow:
             self.start_noise_test()
 
     def start_noise_test(self):
-        """Start testing microphone with noise gate level visualization."""
-        device_info = self.get_selected_device_info()
+        """Start audio level monitoring for noise gate testing."""
+        if self.noise_test_running:
+            return
 
-        device_index = None
-        if device_info:
-            device_index = device_info.get("index")
+        self.noise_test_running = True
+        self.noise_test_btn.configure(text="Stop")
+
+        # Get selected device
+        device_info = self.get_selected_device_info()
+        device_idx = device_info.get("index") if device_info else None
 
         try:
             sample_rate = int(self.rate_var.get())
         except ValueError:
             sample_rate = 16000
+
+        def audio_callback(indata, frames, time, status):
+            if not self.noise_test_running:
+                return
+
+            # Calculate RMS level
+            rms = np.sqrt(np.mean(indata ** 2))
+            db = settings_logic.rms_to_db(rms)
+
+            # Update meter on main thread
+            self.window.after(0, self._update_meter, db)
 
         try:
             self.noise_test_stream = sd.InputStream(
+                device=device_idx,
                 samplerate=sample_rate,
                 channels=1,
-                dtype='float32',
-                device=device_index,
-                callback=self.noise_test_audio_callback
+                callback=audio_callback,
             )
             self.noise_test_stream.start()
-            self.noise_test_running = True
-            self.noise_test_btn.config(text="Stop")
-            # Schedule auto-stop after 10 seconds (longer than device test)
-            self.window.after(10000, self.auto_stop_noise_test)
         except Exception as e:
-            messagebox.showerror("Test Failed", f"Could not open device:\n{e}")
-
-    def noise_test_audio_callback(self, indata, frames, time_info, status):
-        """Callback for noise gate test - updates level meter with gating visual."""
-        if not self.noise_test_running:
-            return
-        # Calculate RMS level
-        rms = np.sqrt(np.mean(indata**2))
-        # Convert to dB (with floor at -60dB)
-        db = 20 * np.log10(max(rms, 1e-6))
-        # Get threshold for comparison
-        threshold_db = self.noise_threshold_var.get()
-        # Normalize to 0-1 range (-60dB to 0dB) - same as level meter
-        level = max(0, min(1, (db + 60) / 60))
-        # Determine if gated (below threshold)
-        is_gated = db < threshold_db
-        # Schedule UI update on main thread
-        try:
-            self.window.after_idle(lambda: self.update_noise_level_meter(level, is_gated))
-        except Exception:
-            pass  # Window may be closing
-
-    def update_noise_level_meter(self, level, is_gated):
-        """Update the noise gate level meter display."""
-        if not self.noise_test_running or not self.noise_level_canvas:
-            return
-        width = int(level * self.meter_width)
-        # Color based on gating status
-        if is_gated:
-            color = SLATE_600  # Dim gray when gated (below threshold)
-        elif level < 0.5:
-            color = SUCCESS  # Green - normal
-        elif level < 0.75:
-            color = WARNING  # Yellow - getting loud
-        else:
-            color = ERROR  # Red - very loud
-        self.noise_level_canvas.coords(self.noise_level_bar, 0, 0, width, self.meter_height)
-        self.noise_level_canvas.itemconfig(self.noise_level_bar, fill=color)
-
-    def auto_stop_noise_test(self):
-        """Auto-stop noise gate test after timeout."""
-        if self.noise_test_running:
+            messagebox.showerror("Audio Error", f"Could not start audio: {e}")
             self.stop_noise_test()
 
     def stop_noise_test(self):
-        """Stop the noise gate test."""
+        """Stop audio level monitoring."""
         self.noise_test_running = False
         if self.noise_test_stream:
-            try:
-                self.noise_test_stream.stop()
-                self.noise_test_stream.close()
-            except Exception:
-                pass
+            self.noise_test_stream.stop()
+            self.noise_test_stream.close()
             self.noise_test_stream = None
-        self.noise_test_btn.config(text="Test")
-        # Reset level meter
-        if self.noise_level_canvas:
-            self.noise_level_canvas.coords(self.noise_level_bar, 0, 0, 0, 16)
+        self.noise_test_btn.configure(text="Test")
+        # Reset meter
+        self.noise_level_canvas.coords(self.noise_level_bar, 0, 0, 0, self.meter_height)
+
+    def _update_meter(self, db):
+        """Update the audio level meter display."""
+        threshold = self.noise_threshold_var.get()
+        is_gated = db < threshold
+
+        # Calculate width
+        linear = settings_logic.db_to_linear(db, -60, -20)
+        width = int(linear * self.meter_width)
+        width = max(0, min(self.meter_width, width))
+
+        # Get color
+        color = get_meter_color((db + 60) / 40, is_gated)
+
+        # Update bar
+        self.noise_level_canvas.coords(self.noise_level_bar, 0, 0, width, self.meter_height)
+        self.noise_level_canvas.itemconfig(self.noise_level_bar, fill=color)
+
+        # Update threshold marker
+        thresh_x = settings_logic.db_to_linear(threshold, -60, -20) * self.meter_width
+        self.noise_level_canvas.coords(
+            self.threshold_marker, thresh_x, 0, thresh_x, self.meter_height
+        )
+
+    def get_selected_device_info(self):
+        """Get the device_info dict for the currently selected device."""
+        selected = self.device_var.get()
+        if "(unavailable)" in selected:
+            return self.config.get("input_device")
+        for display_name, device_info in self.devices_list:
+            if display_name == selected:
+                return device_info
+        return None
+
+    def check_ollama_status_bg(self):
+        """Check Ollama status in background thread."""
+        def check():
+            try:
+                import requests
+                url = self.config.get("ollama_url", "http://localhost:11434")
+                response = requests.get(f"{url}/api/tags", timeout=5)
+                if response.status_code == 200:
+                    models = response.json().get("models", [])
+                    if models:
+                        self.window.after(0, lambda: self.ollama_status.set_status(
+                            "success", f"Connected ({len(models)} models)"
+                        ))
+                    else:
+                        self.window.after(0, lambda: self.ollama_status.set_status(
+                            "warning", "Connected (no models)"
+                        ))
+                else:
+                    self.window.after(0, lambda: self.ollama_status.set_status(
+                        "error", "Connection failed"
+                    ))
+            except Exception:
+                self.window.after(0, lambda: self.ollama_status.set_status(
+                    "error", "Ollama not running"
+                ))
+
+        threading.Thread(target=check, daemon=True).start()
+
+    def _open_dictionary_editor(self):
+        """Open dictionary editor dialog."""
+        # TODO: Implement dictionary editor
+        messagebox.showinfo("Coming Soon", "Dictionary editor will be available soon.")
+
+    def _open_vocabulary_editor(self):
+        """Open vocabulary editor dialog."""
+        # TODO: Implement vocabulary editor
+        messagebox.showinfo("Coming Soon", "Vocabulary editor will be available soon.")
+
+    def _open_history_viewer(self):
+        """Open history viewer dialog."""
+        # TODO: Implement history viewer
+        messagebox.showinfo("Coming Soon", "History viewer will be available soon.")
+
+    def _open_license_dialog(self):
+        """Open license entry dialog."""
+        # TODO: Implement license dialog
+        messagebox.showinfo("Coming Soon", "License dialog will be available soon.")
+
+    # =========================================================================
+    # Save/Reset/Close
+    # =========================================================================
 
     def save(self):
         """Save settings and close."""
-        try:
-            sample_rate = int(self.rate_var.get())
-        except ValueError:
-            sample_rate = 16000
+        # Validate inputs
+        sample_rate = settings_logic.validate_sample_rate(self.rate_var.get())
+        silence_duration = settings_logic.validate_silence_duration(self.silence_var.get())
 
-        try:
-            silence_duration = float(self.silence_var.get())
-            silence_duration = max(0.5, min(10.0, silence_duration))  # Clamp to reasonable range
-        except ValueError:
-            silence_duration = 2.0
-
-        try:
-            preview_delay = float(self.preview_delay_var.get())
-            preview_delay = max(0.0, min(10.0, preview_delay))  # Clamp to reasonable range
-        except ValueError:
-            preview_delay = 2.0
-
-        # Get selected device info (None for System Default)
+        # Get selected device info
         device_info = self.get_selected_device_info()
 
-        # Convert language label back to code
-        lang_label = self.lang_var.get()
-        lang_code = next((code for code, label in config.LANGUAGE_LABELS.items()
-                          if label == lang_label), lang_label)
+        # Convert language labels back to codes
+        lang_code = settings_logic.language_label_to_code(self.lang_var.get())
+        trans_lang_code = settings_logic.language_label_to_code(self.trans_lang_var.get())
 
-        # Convert translation source language label back to code
-        trans_lang_label = self.trans_lang_var.get()
-        trans_lang_code = next((code for code, label in config.LANGUAGE_LABELS.items()
-                               if label == trans_lang_label), trans_lang_label)
+        # Get processing mode
+        processing_mode = settings_logic.get_processing_mode_from_ui(
+            self.gpu_enabled_var.get(),
+            self.compute_type_var.get(),
+        )
 
         new_config = {
             "model_size": self.model_var.get(),
@@ -1704,38 +1693,26 @@ class SettingsWindow:
             "auto_paste": self.autopaste_var.get(),
             "paste_mode": self.paste_mode_var.get(),
             "start_with_windows": self.startup_var.get(),
-            # GPU/CUDA settings
-            "processing_mode": self.get_processing_mode(),
-            # Noise gate settings
+            "processing_mode": processing_mode,
             "noise_gate_enabled": self.noise_gate_var.get(),
             "noise_gate_threshold_db": self.noise_threshold_var.get(),
-            # Audio feedback settings
             "audio_feedback_volume": self.volume_var.get(),
-            "sound_processing": self.sound_processing_var.get(),
-            "sound_success": self.sound_success_var.get(),
-            "sound_error": self.sound_error_var.get(),
-            "sound_command": self.sound_command_var.get(),
-            # Text processing settings
             "voice_commands_enabled": self.voice_commands_var.get(),
             "scratch_that_enabled": self.scratch_that_var.get(),
             "filler_removal_enabled": self.filler_var.get(),
             "filler_removal_aggressive": self.filler_aggressive_var.get(),
-            "custom_fillers": self.config.get("custom_fillers", []),  # Preserve existing
+            "custom_fillers": self.config.get("custom_fillers", []),
             "custom_dictionary": self.custom_dictionary,
             "custom_vocabulary": self.custom_vocabulary,
             "custom_commands": self.custom_commands,
-            # AI cleanup settings
             "ai_cleanup_enabled": self.ai_cleanup_var.get(),
             "ai_cleanup_mode": self.ai_mode_var.get(),
             "ai_formality_level": self.ai_formality_var.get(),
             "ollama_model": self.ai_model_var.get(),
-            "ollama_url": self.config.get("ollama_url", "http://localhost:11434"),  # Preserve URL
-            # Preview window settings
+            "ollama_url": self.config.get("ollama_url", "http://localhost:11434"),
             "preview_enabled": self.preview_enabled_var.get(),
             "preview_position": self.preview_position_var.get(),
-            "preview_auto_hide_delay": preview_delay,
             "preview_theme": self.preview_theme_var.get(),
-            "preview_font_size": self.preview_font_size_var.get()
         }
 
         config.save_config(new_config)
@@ -1750,420 +1727,75 @@ class SettingsWindow:
 
     def reset_defaults(self):
         """Reset all settings to defaults."""
-        if not messagebox.askyesno("Reset to Defaults",
-                                   "Reset all settings to defaults?\nThis will not affect Windows startup setting."):
+        if not messagebox.askyesno(
+            "Reset to Defaults",
+            "Reset all settings to defaults?\nThis will not affect Windows startup setting."
+        ):
             return
 
-        defaults = config.DEFAULTS
+        defaults = settings_logic.get_defaults()
+
+        # General
         self.model_var.set(defaults["model_size"])
-        default_lang_label = config.LANGUAGE_LABELS.get(defaults["language"], defaults["language"])
-        self.lang_var.set(default_lang_label)
-        # Reset translation settings
-        self.translation_enabled_var.set(defaults["translation_enabled"])
-        default_trans_lang = defaults["translation_source_language"]
-        default_trans_label = config.LANGUAGE_LABELS.get(default_trans_lang, default_trans_lang)
-        self.trans_lang_var.set(default_trans_label)
-        self.on_translation_toggle()  # Update UI state
-        self.rate_var.set(str(defaults["sample_rate"]))
-        self.hotkey_capture.set_hotkey(defaults["hotkey"])
+        self.lang_var.set(settings_logic.language_code_to_label(defaults["language"]))
         self.mode_var.set(defaults["recording_mode"])
         self.silence_var.set(str(defaults["silence_duration_sec"]))
-        self.feedback_var.set(defaults["audio_feedback"])
+        self.hotkey_capture.set_hotkey(defaults["hotkey"])
+
+        # Output
         self.autopaste_var.set(defaults["auto_paste"])
         self.paste_mode_var.set(defaults["paste_mode"])
-        # Reset GPU settings
-        default_mode = defaults["processing_mode"]
-        self.processing_combo.set(config.PROCESSING_MODE_LABELS.get(default_mode, "Auto"))
-        # Reset noise gate settings
-        self.noise_gate_var.set(defaults["noise_gate_enabled"])
-        self.noise_threshold_var.set(defaults["noise_gate_threshold_db"])
-        # Reset audio feedback settings
-        self.sound_processing_var.set(defaults["sound_processing"])
-        self.sound_success_var.set(defaults["sound_success"])
-        self.sound_error_var.set(defaults["sound_error"])
-        self.volume_var.set(defaults["audio_feedback_volume"])
-        # Reset text processing settings
-        self.voice_commands_var.set(defaults["voice_commands_enabled"])
-        self.scratch_that_var.set(defaults["scratch_that_enabled"])
-        self.filler_var.set(defaults["filler_removal_enabled"])
-        self.filler_aggressive_var.set(defaults["filler_removal_aggressive"])
-        self.custom_dictionary = []
-        self._refresh_dict_listbox()
-        self.custom_vocabulary = []
-        self._refresh_vocab_listbox()
-        self.custom_commands = []
-        self._refresh_cmd_listbox()
-        # Reset preview settings
-        self.preview_enabled_var.set(defaults["preview_enabled"])
-        self.preview_position_var.set(defaults["preview_position"])
-        self.preview_delay_var.set(str(defaults["preview_auto_hide_delay"]))
-        self.preview_theme_var.set(defaults["preview_theme"])
-        self.preview_font_size_var.set(defaults["preview_font_size"])
-        # Reset device to System Default
-        self.refresh_devices()
-        # Update UI
-        self.update_silence_visibility()
-        self.on_mode_change()
+        self.preview_enabled_var.set(defaults.get("preview_enabled", True))
+        self.preview_position_var.set(defaults.get("preview_position", "bottom_right"))
+        self.preview_theme_var.set(defaults.get("preview_theme", "dark"))
 
-    def open_url(self, url):
-        """Open URL in default browser."""
-        import webbrowser
-        webbrowser.open(url)
+        # Audio
+        self.rate_var.set(str(defaults["sample_rate"]))
+        self.noise_gate_var.set(defaults.get("noise_gate_enabled", False))
+        self.noise_threshold_var.set(defaults.get("noise_gate_threshold_db", -40))
+        self.feedback_var.set(defaults["audio_feedback"])
+        self.volume_var.set(defaults.get("audio_feedback_volume", 100))
 
-    def _refresh_dict_listbox(self):
-        """Refresh the dictionary listbox display."""
-        self.dict_listbox.delete(0, tk.END)
-        for entry in self.custom_dictionary:
-            from_text = entry.get("from", "")
-            to_text = entry.get("to", "")
-            self.dict_listbox.insert(tk.END, f'"{from_text}" → "{to_text}"')
+        # Recognition
+        self.gpu_enabled_var.set(False)
+        self.compute_type_var.set("int8")
+        self.translation_enabled_var.set(defaults["translation_enabled"])
 
-    def add_dict_entry(self):
-        """Show dialog to add a dictionary entry."""
-        dialog = tk.Toplevel(self.window)
-        dialog.title("Add Dictionary Entry")
-        dialog.geometry("350x150")
-        dialog.resizable(False, False)
-        dialog.transient(self.window)
-        dialog.grab_set()
+        # Text
+        self.voice_commands_var.set(defaults.get("voice_commands_enabled", True))
+        self.scratch_that_var.set(defaults.get("scratch_that_enabled", True))
+        self.filler_var.set(defaults.get("filler_removal_enabled", False))
+        self.filler_aggressive_var.set(defaults.get("filler_removal_aggressive", False))
 
-        # Center on parent
-        dialog.update_idletasks()
-        x = self.window.winfo_x() + (self.window.winfo_width() - 350) // 2
-        y = self.window.winfo_y() + (self.window.winfo_height() - 150) // 2
-        dialog.geometry(f"+{x}+{y}")
-
-        frame = ttk.Frame(dialog, padding=15)
-        frame.pack(fill=tk.BOTH, expand=True)
-
-        ttk.Label(frame, text="From (what Whisper hears):").grid(row=0, column=0, sticky=tk.W, pady=5)
-        from_var = tk.StringVar()
-        from_entry = ttk.Entry(frame, textvariable=from_var, width=35)
-        from_entry.grid(row=0, column=1, sticky=tk.W, pady=5)
-
-        ttk.Label(frame, text="To (what you want):").grid(row=1, column=0, sticky=tk.W, pady=5)
-        to_var = tk.StringVar()
-        to_entry = ttk.Entry(frame, textvariable=to_var, width=35)
-        to_entry.grid(row=1, column=1, sticky=tk.W, pady=5)
-
-        def do_add():
-            from_text = from_var.get().strip()
-            to_text = to_var.get().strip()
-            if from_text and to_text:
-                self.custom_dictionary.append({
-                    "from": from_text,
-                    "to": to_text,
-                    "case_sensitive": False
-                })
-                self._refresh_dict_listbox()
-                dialog.destroy()
-
-        btn_frame = ttk.Frame(frame)
-        btn_frame.grid(row=2, column=0, columnspan=2, pady=15)
-        ttk.Button(btn_frame, text="Add", command=do_add).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-
-        from_entry.focus_set()
-
-    def remove_dict_entry(self):
-        """Remove selected dictionary entry."""
-        selection = self.dict_listbox.curselection()
-        if selection:
-            idx = selection[0]
-            self.custom_dictionary.pop(idx)
-            self._refresh_dict_listbox()
-
-    def _refresh_vocab_listbox(self):
-        """Refresh the vocabulary listbox display."""
-        self.vocab_listbox.delete(0, tk.END)
-        for term in self.custom_vocabulary:
-            self.vocab_listbox.insert(tk.END, term)
-
-    def add_vocab_entry(self):
-        """Show dialog to add a vocabulary term."""
-        dialog = tk.Toplevel(self.window)
-        dialog.title("Add Vocabulary Term")
-        dialog.geometry("350x120")
-        dialog.resizable(False, False)
-        dialog.transient(self.window)
-        dialog.grab_set()
-
-        # Center on parent
-        dialog.update_idletasks()
-        x = self.window.winfo_x() + (self.window.winfo_width() - 350) // 2
-        y = self.window.winfo_y() + (self.window.winfo_height() - 120) // 2
-        dialog.geometry(f"+{x}+{y}")
-
-        frame = ttk.Frame(dialog, padding=15)
-        frame.pack(fill=tk.BOTH, expand=True)
-
-        ttk.Label(frame, text="Term (name, jargon, acronym):").grid(row=0, column=0, sticky=tk.W, pady=5)
-        term_var = tk.StringVar()
-        term_entry = ttk.Entry(frame, textvariable=term_var, width=35)
-        term_entry.grid(row=0, column=1, sticky=tk.W, pady=5)
-
-        def do_add():
-            term = term_var.get().strip()
-            if term and term not in self.custom_vocabulary:
-                self.custom_vocabulary.append(term)
-                self._refresh_vocab_listbox()
-                dialog.destroy()
-            elif term in self.custom_vocabulary:
-                messagebox.showinfo("Duplicate", f'"{term}" is already in your vocabulary.')
-
-        btn_frame = ttk.Frame(frame)
-        btn_frame.grid(row=1, column=0, columnspan=2, pady=15)
-        ttk.Button(btn_frame, text="Add", command=do_add).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-
-        term_entry.focus_set()
-        term_entry.bind('<Return>', lambda e: do_add())
-
-    def remove_vocab_entry(self):
-        """Remove selected vocabulary term."""
-        selection = self.vocab_listbox.curselection()
-        if selection:
-            idx = selection[0]
-            self.custom_vocabulary.pop(idx)
-            self._refresh_vocab_listbox()
-
-    def on_ai_cleanup_toggle(self):
-        """Update UI when AI cleanup is toggled."""
-        enabled = self.ai_cleanup_var.get()
-        state = tk.NORMAL if enabled else tk.DISABLED
-
-        # Enable/disable related controls
-        for widget in [self.ai_formality_combo, self.ai_model_entry, self.test_ollama_btn]:
-            widget.config(state=state if widget != self.ai_formality_combo else ("readonly" if enabled else tk.DISABLED))
-
-    def check_ollama_status_bg(self):
-        """Check Ollama status in background thread."""
-        import ai_cleanup
-        ollama_url = self.config.get("ollama_url", "http://localhost:11434")
-
-        try:
-            if ai_cleanup.check_ollama_available(ollama_url):
-                self.ollama_status_label.config(text="Status: ✓ Ollama running", foreground=SUCCESS)
-            else:
-                self.ollama_status_label.config(text="Status: ✗ Ollama not running", foreground="red")
-        except Exception:
-            self.ollama_status_label.config(text="Status: ✗ Error checking Ollama", foreground="red")
-
-    def test_ollama_connection(self):
-        """Test Ollama connection and show result."""
-        import ai_cleanup
-
-        ollama_url = self.config.get("ollama_url", "http://localhost:11434")
-        model = self.ai_model_var.get()
-
-        # Show testing message
-        self.ollama_status_label.config(text="Status: Testing...", foreground="orange")
-        self.test_ollama_btn.config(state=tk.DISABLED)
-        self.window.update()
-
-        def do_test():
-            success, message = ai_cleanup.test_ollama_connection(model, ollama_url)
-
-            # Update UI on main thread
-            if success:
-                self.ollama_status_label.config(text=f"Status: ✓ {message}", foreground=SUCCESS)
-            else:
-                self.ollama_status_label.config(text=f"Status: ✗ {message}", foreground="red")
-
-            self.test_ollama_btn.config(state=tk.NORMAL)
-
-            # Show messagebox with result
-            if success:
-                messagebox.showinfo("Ollama Connection Test", message)
-            else:
-                messagebox.showerror("Ollama Connection Test", message)
-
-        # Run test in background thread
-        threading.Thread(target=do_test, daemon=True).start()
-
-    def activate_license(self):
-        """Validate and activate a license key."""
-        license_key = self.license_key_var.get().strip()
-
-        if not license_key:
-            messagebox.showerror("License Activation", "Please enter a license key.")
-            return
-
-        # Show progress indicator
-        progress_dialog = tk.Toplevel(self.window)
-        progress_dialog.title("Activating License")
-        progress_dialog.geometry("300x100")
-        progress_dialog.transient(self.window)
-        progress_dialog.grab_set()
-
-        # Center on parent window
-        x = self.window.winfo_x() + (self.window.winfo_width() - 300) // 2
-        y = self.window.winfo_y() + (self.window.winfo_height() - 100) // 2
-        progress_dialog.geometry(f"+{x}+{y}")
-
-        ttk.Label(progress_dialog, text="Validating license key...", font=("", 10)).pack(pady=20)
-        progress = ttk.Progressbar(progress_dialog, mode='indeterminate', length=200)
-        progress.pack(pady=10)
-        progress.start(10)
-
-        def do_validate():
-            key = self.license_key_var.get().strip()
-
-            # Validate license
-            is_valid, error_msg = license.validate_license_key(key, self.config)
-
-            def on_result():
-                progress_dialog.destroy()
-
-                if is_valid:
-                    # Save config with updated license
-                    config.save_config(self.config)
-                    messagebox.showinfo("License Activated",
-                                      "License activated successfully! Please restart MurmurTone for changes to take effect.")
-                    self.close()  # Close settings
-                else:
-                    messagebox.showerror("License Activation Failed", error_msg)
-
-            self.window.after(0, on_result)
-
-        # Run validation in background thread
-        threading.Thread(target=do_validate, daemon=True).start()
-
-    def deactivate_license(self):
-        """Deactivate the current license."""
-        confirm = messagebox.askyesno(
-            "Deactivate License",
-            "Are you sure you want to deactivate your license?\n\n"
-            "This will return the app to trial mode (if not expired).\n"
-            "You can reactivate with the same license key later."
-        )
-
-        if confirm:
-            self.config = license.deactivate_license(self.config)
-            config.save_config(self.config)
-
-            messagebox.showinfo(
-                "License Deactivated",
-                "Your license has been deactivated. You can transfer it to another device."
-            )
-
-            # Close and reopen settings to refresh UI
-            self.close()
-            if self.on_save_callback:
-                self.on_save_callback(self.config)
-
-    def open_purchase_page(self):
-        """Open the purchase page in the default browser."""
-        # TODO: Update URL when live
-        purchase_url = "https://murmurtone.com/buy"
-        webbrowser.open(purchase_url)
-
-    def _refresh_cmd_listbox(self):
-        """Refresh the custom commands listbox display."""
-        self.cmd_listbox.delete(0, tk.END)
-        for entry in self.custom_commands:
-            trigger = entry.get("trigger", "")
-            replacement = entry.get("replacement", "")
-            # Truncate long replacement for display
-            display_repl = replacement[:30] + "..." if len(replacement) > 30 else replacement
-            display_repl = display_repl.replace("\n", " ")
-            self.cmd_listbox.insert(tk.END, f'"{trigger}" -> "{display_repl}"')
-
-    def add_cmd_entry(self):
-        """Show dialog to add a custom command entry."""
-        dialog = tk.Toplevel(self.window)
-        dialog.title("Add Custom Command")
-        dialog.geometry("400x250")
-        dialog.resizable(False, False)
-        dialog.transient(self.window)
-        dialog.grab_set()
-
-        # Center on parent
-        dialog.update_idletasks()
-        x = self.window.winfo_x() + (self.window.winfo_width() - 400) // 2
-        y = self.window.winfo_y() + (self.window.winfo_height() - 250) // 2
-        dialog.geometry(f"+{x}+{y}")
-
-        frame = ttk.Frame(dialog, padding=15)
-        frame.pack(fill=tk.BOTH, expand=True)
-
-        ttk.Label(frame, text="Trigger phrase:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        trigger_var = tk.StringVar()
-        trigger_entry = ttk.Entry(frame, textvariable=trigger_var, width=40)
-        trigger_entry.grid(row=0, column=1, sticky=tk.W, pady=5)
-
-        ttk.Label(frame, text="Expands to:").grid(row=1, column=0, sticky=tk.NW, pady=5)
-        replacement_text = tk.Text(frame, width=40, height=5, wrap=tk.WORD)
-        replacement_text.grid(row=1, column=1, sticky=tk.W, pady=5)
-
-        hint = ttk.Label(frame, text="Tip: Use multiple lines for templates",
-                        font=("", 8), foreground=SLATE_500)
-        hint.grid(row=2, column=1, sticky=tk.W)
-
-        def do_add():
-            trigger = trigger_var.get().strip()
-            replacement = replacement_text.get("1.0", tk.END).strip()
-            if trigger and replacement:
-                self.custom_commands.append({
-                    "trigger": trigger,
-                    "replacement": replacement,
-                    "enabled": True
-                })
-                self._refresh_cmd_listbox()
-                dialog.destroy()
-
-        btn_frame = ttk.Frame(frame)
-        btn_frame.grid(row=3, column=0, columnspan=2, pady=15)
-        ttk.Button(btn_frame, text="Add", command=do_add).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-
-        trigger_entry.focus_set()
-
-    def remove_cmd_entry(self):
-        """Remove selected custom command entry."""
-        selection = self.cmd_listbox.curselection()
-        if selection:
-            idx = selection[0]
-            self.custom_commands.pop(idx)
-            self._refresh_cmd_listbox()
-
-    def _refresh_history(self):
-        """Refresh the history listbox from disk."""
-        self.history_listbox.delete(0, tk.END)
-        entries = text_processor.TranscriptionHistory.load_from_disk()
-        # Show newest first (entries are stored oldest first)
-        for entry in reversed(entries):
-            text = entry.get("text", "")
-            # Truncate long entries for display
-            display = text[:80] + "..." if len(text) > 80 else text
-            # Replace newlines with spaces for single-line display
-            display = display.replace("\n", " ")
-            self.history_listbox.insert(tk.END, display)
-        if not entries:
-            self.history_listbox.insert(tk.END, "(No history yet)")
-
-    def _clear_history(self):
-        """Clear all history."""
-        if messagebox.askyesno("Clear History", "Clear all transcription history?"):
-            text_processor.TranscriptionHistory.clear_on_disk()
-            self._refresh_history()
+        # Advanced
+        self.ai_cleanup_var.set(defaults.get("ai_cleanup_enabled", False))
+        self.ai_mode_var.set(defaults.get("ai_cleanup_mode", "grammar"))
+        self.ai_formality_var.set(defaults.get("ai_formality_level", "neutral"))
 
     def close(self):
-        """Close the window."""
-        # Stop any running test
-        self.stop_noise_test()
+        """Close the settings window."""
+        # Stop any audio test
+        if self.noise_test_running:
+            self.stop_noise_test()
+
         if self.window:
             self.window.destroy()
             self.window = None
 
 
 def open_settings(current_config, on_save_callback=None):
-    """Open settings window. Call from main app."""
+    """Open the settings window.
+
+    Args:
+        current_config: Current configuration dictionary
+        on_save_callback: Optional callback called with new config when saved
+    """
     settings = SettingsWindow(current_config, on_save_callback)
     settings.show()
 
 
 if __name__ == "__main__":
-    # Test the settings GUI
-    test_config = config.load_config()
-    open_settings(test_config, lambda c: print("Saved:", c))
+    # Test mode - load config and show settings
+    import config as cfg
+    current = cfg.load_config()
+    open_settings(current)
