@@ -1721,7 +1721,7 @@ class SettingsWindow:
     # =========================================================================
 
     def save(self):
-        """Save settings and close."""
+        """Save settings."""
         # Validate inputs
         sample_rate = settings_logic.validate_sample_rate(self.rate_var.get())
         silence_duration = settings_logic.validate_silence_duration(self.silence_var.get())
@@ -1782,8 +1782,6 @@ class SettingsWindow:
 
         if self.on_save_callback:
             self.on_save_callback(new_config)
-
-        self.close()
 
     def reset_defaults(self):
         """Reset all settings to defaults."""
