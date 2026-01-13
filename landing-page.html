@@ -7,33 +7,48 @@
     <meta name="description" content="Fast, accurate voice-to-text that runs 100% offline. No cloud, no tracking. Your voice stays on your machine.">
     <meta property="og:title" content="MurmurTone - Private, Local Voice-to-Text">
     <meta property="og:description" content="100% offline voice-to-text for Windows. No cloud, no tracking. $49/year.">
-    <meta property="og:image" content="/assets/logo/murmurtone-logo-icon.png">
+    <meta property="og:image" content="/icon.png">
     <meta property="og:type" content="website">
     <link rel="icon" type="image/png" href="/icon.png">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /*
+         * MurmurTone Brand: Security-First
+         * Palette: Slate + Teal
+         */
+
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #14b8a6;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --white: #ffffff;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: var(--slate-700);
+            background: var(--white);
         }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
         /* Navigation */
         .nav-bar {
-            background: white;
+            background: var(--white);
             padding: 15px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--slate-200);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -53,44 +68,34 @@
             align-items: center;
             gap: 10px;
             text-decoration: none;
-            color: #222;
+            color: var(--slate-800);
             font-weight: 700;
             font-size: 1.2em;
         }
 
-        .nav-logo img {
-            height: 32px;
-            width: 32px;
-        }
+        .nav-logo img { height: 32px; width: 32px; }
 
-        .nav-links {
-            display: flex;
-            gap: 30px;
-            align-items: center;
-        }
+        .nav-links { display: flex; gap: 30px; align-items: center; }
 
         .nav-links a {
             text-decoration: none;
-            color: #666;
+            color: var(--slate-600);
             font-weight: 500;
             transition: color 0.2s;
         }
 
-        .nav-links a:hover {
-            color: #667eea;
-        }
+        .nav-links a:hover { color: var(--primary); }
 
         .nav-cta {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
+            background: var(--primary);
+            color: var(--white) !important;
             padding: 8px 20px;
             border-radius: 6px;
             font-weight: 600;
+            transition: background 0.2s;
         }
 
-        .nav-cta:hover {
-            opacity: 0.9;
-        }
+        .nav-cta:hover { background: var(--primary-dark); }
 
         /* Hamburger Menu */
         .nav-hamburger {
@@ -104,288 +109,303 @@
         .nav-hamburger span {
             width: 25px;
             height: 3px;
-            background: #333;
+            background: var(--slate-700);
             border-radius: 2px;
             transition: all 0.3s;
         }
 
+        .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
+        .nav-hamburger.active span:nth-child(2) { opacity: 0; }
+        .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
+
+        /* Mobile Menu */
         .mobile-menu {
             display: none;
             position: fixed;
             top: 62px;
             left: 0;
             right: 0;
-            background: white;
+            background: var(--white);
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             z-index: 99;
         }
 
-        .mobile-menu.active {
-            display: block;
-        }
+        .mobile-menu.active { display: block; }
 
         .mobile-menu a {
             display: block;
             padding: 12px 0;
-            color: #333;
+            color: var(--slate-700);
             text-decoration: none;
             font-weight: 500;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--slate-200);
         }
 
-        .mobile-menu a:last-child {
-            border-bottom: none;
-        }
+        .mobile-menu a:last-child { border-bottom: none; }
+        .mobile-menu a:hover { color: var(--primary); }
 
-        .mobile-menu a.nav-cta {
+        .mobile-menu .nav-cta {
             display: inline-block;
-            margin-top: 10px;
-            color: white;
+            margin-top: 15px;
+            text-align: center;
+            color: var(--white);
         }
 
         /* Focus States */
         a:focus-visible, button:focus-visible {
-            outline: 2px solid #667eea;
+            outline: 2px solid var(--primary);
             outline-offset: 2px;
         }
 
-        .cta-button:focus-visible, .nav-cta:focus-visible {
-            outline: 2px solid white;
-            outline-offset: 2px;
-        }
-
-        /* Table Scroll Wrapper */
-        .table-wrapper {
-            overflow-x: auto;
-            margin: 0 -20px;
-            padding: 0 20px;
-        }
-
+        /* Hero - Dark, serious */
         header {
-            padding: 60px 0;
+            padding: 80px 0;
             text-align: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--slate-800);
+            color: var(--white);
         }
 
-        .header-logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-            filter: brightness(0) invert(1);
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(13, 148, 136, 0.15);
+            border: 1px solid rgba(13, 148, 136, 0.3);
+            color: var(--primary-light);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin-bottom: 24px;
         }
 
         header h1 {
             font-size: 3em;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
             font-weight: 700;
+            letter-spacing: -0.02em;
         }
 
         header p {
-            font-size: 1.3em;
-            opacity: 0.95;
-            margin-bottom: 30px;
+            font-size: 1.25em;
+            opacity: 0.85;
+            margin-bottom: 32px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .cta-button {
             display: inline-block;
-            padding: 14px 40px;
-            background: white;
-            color: #667eea;
+            padding: 14px 32px;
+            background: var(--primary);
+            color: var(--white);
             text-decoration: none;
             border-radius: 6px;
             font-weight: 600;
-            transition: transform 0.3s, box-shadow 0.3s;
-            font-size: 1.1em;
+            transition: background 0.2s, transform 0.2s;
+            font-size: 1em;
         }
 
         .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            background: var(--primary-dark);
+            transform: translateY(-1px);
         }
 
+        .cta-secondary {
+            display: inline-block;
+            padding: 14px 32px;
+            background: transparent;
+            color: var(--white);
+            text-decoration: none;
+            border: 1px solid var(--slate-600);
+            border-radius: 6px;
+            font-weight: 500;
+            margin-left: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .cta-secondary:hover { border-color: var(--slate-400); }
+
+        /* Trust bar */
+        .trust-bar {
+            background: var(--slate-50);
+            border-bottom: 1px solid var(--slate-200);
+            padding: 20px 0;
+        }
+
+        .trust-items {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--slate-600);
+            font-size: 0.9em;
+        }
+
+        .trust-item svg { color: var(--primary); }
+
+        /* Features section */
         .hero {
             padding: 80px 0;
             text-align: center;
         }
 
         .hero h2 {
-            font-size: 2.5em;
-            margin-bottom: 20px;
-            color: #222;
+            font-size: 2.2em;
+            margin-bottom: 16px;
+            color: var(--slate-800);
+            letter-spacing: -0.01em;
         }
 
         .hero p {
-            font-size: 1.2em;
-            color: #666;
-            max-width: 700px;
-            margin: 0 auto 40px;
+            font-size: 1.15em;
+            color: var(--slate-600);
+            max-width: 650px;
+            margin: 0 auto 20px;
         }
 
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 32px;
             padding: 60px 0;
-            border-top: 1px solid #eee;
-            border-bottom: 1px solid #eee;
         }
 
         .feature {
-            text-align: center;
+            text-align: left;
+            padding: 24px;
+            background: var(--slate-50);
+            border-radius: 8px;
+            border: 1px solid var(--slate-200);
         }
 
         .feature-icon {
-            font-size: 3em;
-            margin-bottom: 15px;
+            width: 40px;
+            height: 40px;
+            background: rgba(13, 148, 136, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            color: var(--primary);
         }
 
         .feature h3 {
-            font-size: 1.3em;
-            margin-bottom: 10px;
-            color: #222;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+            color: var(--slate-800);
         }
 
         .feature p {
-            color: #666;
-            line-height: 1.8;
+            color: var(--slate-600);
+            font-size: 0.95em;
+            line-height: 1.7;
         }
 
-        .comparison {
-            padding: 60px 0;
-        }
+        /* Comparison */
+        .comparison { padding: 60px 0; background: var(--slate-50); }
 
         .comparison h2 {
             font-size: 2em;
             text-align: center;
             margin-bottom: 40px;
-            color: #222;
+            color: var(--slate-800);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 0 -20px;
+            padding: 0 20px;
         }
 
         .comparison-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 40px;
+            background: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .comparison-table th {
-            background: #f5f5f5;
-            padding: 15px;
+            background: var(--slate-800);
+            color: var(--white);
+            padding: 16px;
             text-align: left;
             font-weight: 600;
-            border-bottom: 2px solid #ddd;
         }
 
         .comparison-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--slate-200);
         }
 
-        .comparison-table tr:nth-child(even) {
-            background: #fafafa;
-        }
+        .comparison-table tr:last-child td { border-bottom: none; }
 
-        .checkmark {
-            color: #667eea;
-            font-weight: bold;
-        }
+        .checkmark { color: var(--primary); font-weight: bold; }
+        .xmark { color: var(--slate-400); }
 
-        .xmark {
-            color: #ccc;
-        }
-
-        .cta-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 60px 0;
-            text-align: center;
-            margin-top: 60px;
-        }
-
-        .cta-section h2 {
-            font-size: 2em;
-            margin-bottom: 20px;
-        }
-
-        .cta-section p {
-            font-size: 1.1em;
-            margin-bottom: 30px;
-            opacity: 0.95;
-        }
-
-        /* FAQ Section */
-        .faq {
-            padding: 60px 0;
-            background: #f9f9f9;
-        }
-
-        .faq h2 {
-            font-size: 2em;
-            text-align: center;
-            margin-bottom: 40px;
-            color: #222;
-        }
-
-        .faq-list {
-            max-width: 700px;
-            margin: 0 auto;
-        }
+        /* FAQ */
+        .faq { padding: 60px 0; }
+        .faq h2 { font-size: 2em; text-align: center; margin-bottom: 40px; color: var(--slate-800); }
+        .faq-list { max-width: 700px; margin: 0 auto; }
 
         .faq-item {
-            background: white;
+            background: var(--white);
+            border: 1px solid var(--slate-200);
             border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
+            margin-bottom: 12px;
         }
 
         .faq-question {
-            padding: 20px 25px;
+            padding: 20px 24px;
             font-weight: 600;
-            color: #222;
+            color: var(--slate-800);
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: background 0.2s;
         }
 
-        .faq-question:hover {
-            background: #f5f5f5;
-        }
-
-        .faq-question::after {
-            content: '+';
-            font-size: 1.5em;
-            color: #667eea;
-            font-weight: 300;
-        }
-
-        .faq-item.active .faq-question::after {
-            content: '−';
-        }
+        .faq-question:hover { background: var(--slate-50); }
+        .faq-question::after { content: '+'; font-size: 1.3em; color: var(--primary); }
+        .faq-item.active .faq-question::after { content: '−'; }
 
         .faq-answer {
-            padding: 0 25px;
+            padding: 0 24px;
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-            color: #666;
-            line-height: 1.8;
+            transition: max-height 0.3s, padding 0.3s;
+            color: var(--slate-600);
         }
 
-        .faq-item.active .faq-answer {
-            padding: 0 25px 20px;
-            max-height: 300px;
+        .faq-item.active .faq-answer { padding: 0 24px 20px; max-height: 300px; }
+
+        /* CTA Section */
+        .cta-section {
+            background: var(--slate-800);
+            color: var(--white);
+            padding: 60px 0;
+            text-align: center;
         }
+
+        .cta-section h2 { font-size: 2em; margin-bottom: 16px; }
+        .cta-section p { font-size: 1.1em; margin-bottom: 24px; opacity: 0.85; }
 
         /* Footer */
         footer {
-            background: #222;
-            color: #999;
+            background: var(--slate-900);
+            color: var(--slate-400);
             padding: 60px 0 30px;
-            margin-top: 0;
         }
 
         .footer-grid {
@@ -395,67 +415,24 @@
             margin-bottom: 40px;
         }
 
-        .footer-column h4 {
-            color: white;
-            font-size: 1em;
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
+        .footer-column h4 { color: var(--white); margin-bottom: 16px; font-weight: 600; }
+        .footer-column a { display: block; color: var(--slate-400); text-decoration: none; margin-bottom: 10px; font-size: 0.9em; }
+        .footer-column a:hover { color: var(--primary-light); }
 
-        .footer-column a {
-            display: block;
-            color: #999;
-            text-decoration: none;
-            margin-bottom: 10px;
-            font-size: 0.9em;
-            transition: color 0.2s;
-        }
-
-        .footer-column a:hover {
-            color: #667eea;
-        }
-
-        .footer-bottom {
-            border-top: 1px solid #333;
-            padding-top: 30px;
-            text-align: center;
-            font-size: 0.9em;
-        }
-
-        .footer-bottom a {
-            color: #667eea;
-            text-decoration: none;
-        }
+        .footer-bottom { border-top: 1px solid var(--slate-700); padding-top: 30px; text-align: center; font-size: 0.9em; }
 
         @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-
-            .nav-hamburger {
-                display: flex;
-            }
-
-            header h1 {
-                font-size: 2em;
-            }
-
-            .hero h2 {
-                font-size: 1.8em;
-            }
-
-            header p {
-                font-size: 1.1em;
-            }
-
-            .footer-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .nav-links { display: none; }
+            .nav-hamburger { display: flex; }
+            header h1 { font-size: 2em; }
+            .hero h2 { font-size: 1.7em; }
+            .cta-secondary { display: block; margin: 12px 0 0 0; }
+            .trust-items { gap: 20px; }
+            .footer-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="nav-bar">
         <div class="nav-container">
             <a href="/" class="nav-logo">
@@ -476,6 +453,7 @@
             </div>
         </div>
     </nav>
+
     <div class="mobile-menu" id="mobileMenu">
         <a href="#features">Features</a>
         <a href="/pricing.html">Pricing</a>
@@ -486,47 +464,100 @@
 
     <header>
         <div class="container">
-            <img src="/icon.png" alt="MurmurTone Logo" class="header-logo">
-            <h1>MurmurTone</h1>
-            <p>Your voice, locally.</p>
-            <a href="#download" class="cta-button">Start Free 14-Day Trial</a>
+            <div class="header-badge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                100% Local Processing
+            </div>
+            <h1>Your voice stays on your machine.</h1>
+            <p>Privacy-first speech recognition for Windows. No cloud uploads, no tracking, no compromises.</p>
+            <a href="/install.html" class="cta-button">Start Free Trial</a>
+            <a href="#features" class="cta-secondary">Learn More</a>
         </div>
     </header>
 
+    <div class="trust-bar">
+        <div class="trust-items">
+            <div class="trust-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Zero data collection
+            </div>
+            <div class="trust-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Works offline
+            </div>
+            <div class="trust-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Secure by design
+            </div>
+            <div class="trust-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                18+ languages
+            </div>
+        </div>
+    </div>
+
     <section class="hero">
         <div class="container">
-            <h2>Speech-to-Text That Respects Your Privacy</h2>
-            <p>Fast, accurate transcription. No cloud. No tracking. No delays. MurmurTone runs entirely offline on your Windows machine, giving you complete control over your voice data.</p>
-            <p style="font-size: 1em; margin-top: 20px; color: #667eea; font-weight: 600;">
-                🎉 Early Access: $49/year — Lock in this rate forever
-            </p>
-            <p style="font-size: 0.9em; color: #999; margin-top: 5px;">
-                Most competitors: $96-180/year. Save 52% or more.
-            </p>
+            <h2>Enterprise-grade privacy, personal pricing</h2>
+            <p>$49/year. Early access pricing locked forever. That's 52% less than cloud alternatives that harvest your data.</p>
         </div>
     </section>
 
-    <section class="features" id="features">
-        <div class="container" style="display: contents;">
-            <div class="feature">
-                <div class="feature-icon">🔒</div>
-                <h3>100% Offline</h3>
-                <p>Your voice never leaves your machine. Process everything locally with zero internet dependency.</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">⚡</div>
-                <h3>Instant Transcription</h3>
-                <p>Press hotkey, speak, release. Your words appear in any application instantly—no waiting for cloud services.</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🎛️</div>
-                <h3>Fully Configurable</h3>
-                <p>Choose your model (speed vs accuracy), set any hotkey, enable auto-language detection—total control.</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">💻</div>
-                <h3>Lightweight</h3>
-                <p>Minimal system resources. Runs quietly in the background. Works on any Windows machine.</p>
+    <section id="features">
+        <div class="container">
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                    <h3>100% Offline</h3>
+                    <p>Your voice never leaves your machine. All processing happens locally with zero internet dependency.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                    <h3>Instant Results</h3>
+                    <p>Press hotkey, speak, release. Words appear in any application instantly—no waiting for servers.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </div>
+                    <h3>Full Control</h3>
+                    <p>Choose your model, set any hotkey, configure sensitivity. Your workflow, your rules.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                        </svg>
+                    </div>
+                    <h3>AI Text Cleanup</h3>
+                    <p>Local AI via Ollama fixes grammar and formatting. Still 100% offline, still private.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -535,109 +566,67 @@
         <div class="container">
             <h2>Why MurmurTone?</h2>
             <div class="table-wrapper">
-            <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Feature</th>
-                        <th>MurmurTone</th>
-                        <th>Cloud Services</th>
-                        <th>Other Desktop Apps</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Offline Processing</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="xmark">✗</span></td>
-                        <td><span class="checkmark">✓</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Privacy First</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="xmark">✗</span></td>
-                        <td><span class="checkmark">✓</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>AI Text Cleanup (Local)</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="xmark">✗</span></td>
-                        <td><span class="xmark">✗</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Translation Mode</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="xmark">✗</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Audio File Transcription</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="xmark">✗</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Configurable Models</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td><span class="xmark">✗</span></td>
-                        <td><span class="xmark">✗</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Lightweight</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td>N/A</td>
-                        <td><span class="checkmark">✓</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Windows Only</strong></td>
-                        <td><span class="checkmark">✓</span></td>
-                        <td>Cross-platform</td>
-                        <td><span class="checkmark">✓</span></td>
-                    </tr>
-                </tbody>
-            </table>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>MurmurTone</th>
+                            <th>Cloud Services</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Data Privacy</strong></td>
+                            <td><span class="checkmark">✓ Nothing leaves your PC</span></td>
+                            <td><span class="xmark">✗ Uploaded to servers</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Works Offline</strong></td>
+                            <td><span class="checkmark">✓ Always</span></td>
+                            <td><span class="xmark">✗ Requires internet</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Local AI Cleanup</strong></td>
+                            <td><span class="checkmark">✓ Via Ollama</span></td>
+                            <td><span class="xmark">✗ Cloud only</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Annual Cost</strong></td>
+                            <td><span class="checkmark">$49/year</span></td>
+                            <td><span class="xmark">$96-180/year</span></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </section>
 
-    <!-- FAQ Section -->
     <section class="faq" id="faq">
         <div class="container">
-            <h2>Frequently Asked Questions</h2>
+            <h2>Questions</h2>
             <div class="faq-list">
                 <div class="faq-item">
-                    <div class="faq-question">Is my voice data stored anywhere?</div>
+                    <div class="faq-question" onclick="this.parentElement.classList.toggle('active')">
+                        Is my voice data really private?
+                    </div>
                     <div class="faq-answer">
-                        <strong>No.</strong> MurmurTone processes everything locally on your machine. Your voice audio is never uploaded to any server, never stored in any cloud, and never leaves your computer. Once transcription is complete, the audio is discarded.
+                        Yes. MurmurTone processes everything on your computer using local AI models. Your voice recordings and transcriptions never leave your machine—there's no server to send them to.
                     </div>
                 </div>
                 <div class="faq-item">
-                    <div class="faq-question">Do I need internet to use MurmurTone?</div>
+                    <div class="faq-question" onclick="this.parentElement.classList.toggle('active')">
+                        Do I need an internet connection?
+                    </div>
                     <div class="faq-answer">
-                        <strong>No.</strong> MurmurTone works completely offline. The only time you need internet is for the initial license activation (one-time) and to download larger speech models if you choose them. After that, everything runs locally.
+                        Only for the initial model download (~75MB-1.5GB) and one-time license activation. After that, MurmurTone works completely offline.
                     </div>
                 </div>
                 <div class="faq-item">
-                    <div class="faq-question">What happens after the 14-day trial?</div>
-                    <div class="faq-answer">
-                        After your trial ends, you'll be prompted to purchase a Pro license ($49/year). If you don't purchase, the app will stop working until you activate a license. Your settings and preferences are preserved.
+                    <div class="faq-question" onclick="this.parentElement.classList.toggle('active')">
+                        What's included in the $49/year?
                     </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question">What's included in the $49/year license?</div>
                     <div class="faq-answer">
-                        Everything! Unlimited transcription, all speech models, AI text cleanup (with Ollama), translation mode, audio file transcription, custom vocabulary, voice commands, and priority support. No hidden fees or per-minute charges.
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question">How does AI text cleanup work without cloud?</div>
-                    <div class="faq-answer">
-                        MurmurTone integrates with Ollama, which runs AI models locally on your machine. When enabled, your transcription is cleaned up by a local LLM—grammar fixes, formality adjustments—all without sending any data to external servers.
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question">Will my price increase after Early Access?</div>
-                    <div class="faq-answer">
-                        <strong>No.</strong> When you purchase during Early Access at $49/year, that rate is locked in forever. Future users may pay more, but your renewal rate stays the same as long as you maintain your subscription.
+                        Everything: unlimited transcription, all speech models, AI text cleanup, translation mode, audio file transcription, custom vocabulary, voice commands, and priority support.
                     </div>
                 </div>
             </div>
@@ -646,15 +635,9 @@
 
     <section class="cta-section">
         <div class="container">
-            <h2 id="download">Ready to Take Back Your Privacy?</h2>
-            <p>Try MurmurTone free for 14 days. No credit card required.</p>
-            <p style="font-size: 1.3em; margin: 20px 0; font-weight: 600;">
-                $49/year — Early Access Pricing
-            </p>
-            <p style="font-size: 0.95em; opacity: 0.9; margin-bottom: 30px;">
-                ✓ Unlimited transcription &nbsp;|&nbsp; ✓ AI text cleanup &nbsp;|&nbsp; ✓ 100% offline &nbsp;|&nbsp; ✓ Lock in this rate forever
-            </p>
-            <a href="/install" class="cta-button" style="background: white; color: #667eea;">Download Free Trial</a>
+            <h2>Ready to take back your privacy?</h2>
+            <p>14-day free trial. No credit card required.</p>
+            <a href="/install.html" class="cta-button">Download MurmurTone</a>
         </div>
     </section>
 
@@ -666,37 +649,31 @@
                     <a href="#features">Features</a>
                     <a href="/pricing.html">Pricing</a>
                     <a href="/install.html">Download</a>
-                    <a href="https://github.com/tuckerandrew21/murmurtone/releases">Changelog</a>
                 </div>
                 <div class="footer-column">
                     <h4>Resources</h4>
                     <a href="/docs/">Documentation</a>
                     <a href="/docs/voice-commands.html">Voice Commands</a>
                     <a href="/docs/troubleshooting.html">Troubleshooting</a>
-                    <a href="#faq">FAQ</a>
                 </div>
                 <div class="footer-column">
                     <h4>Company</h4>
                     <a href="https://github.com/tuckerandrew21/murmurtone">GitHub</a>
-                    <a href="mailto:hello@murmurtone.com">Contact</a>
                     <a href="mailto:support@murmurtone.com">Support</a>
                 </div>
                 <div class="footer-column">
                     <h4>Legal</h4>
                     <a href="/legal/privacy.html">Privacy Policy</a>
                     <a href="/legal/terms.html">Terms of Service</a>
-                    <a href="https://github.com/tuckerandrew21/murmurtone/blob/main/LICENSE">License (MIT)</a>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 MurmurTone. Privacy-focused speech recognition.</p>
-                <p style="margin-top: 10px;">Your voice, locally.</p>
+                © 2025 MurmurTone. Your voice, locally.
             </div>
         </div>
     </footer>
 
     <script>
-        // Mobile menu toggle
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileMenu');
             const hamburger = document.querySelector('.nav-hamburger');
@@ -704,29 +681,10 @@
             hamburger.classList.toggle('active');
         }
 
-        // Close mobile menu when clicking a link
         document.querySelectorAll('.mobile-menu a').forEach(link => {
             link.addEventListener('click', () => {
                 document.getElementById('mobileMenu').classList.remove('active');
                 document.querySelector('.nav-hamburger').classList.remove('active');
-            });
-        });
-
-        // FAQ Accordion
-        document.querySelectorAll('.faq-question').forEach(question => {
-            question.addEventListener('click', () => {
-                const item = question.parentElement;
-                const isActive = item.classList.contains('active');
-
-                // Close all other items
-                document.querySelectorAll('.faq-item').forEach(i => {
-                    i.classList.remove('active');
-                });
-
-                // Toggle current item
-                if (!isActive) {
-                    item.classList.add('active');
-                }
             });
         });
     </script>

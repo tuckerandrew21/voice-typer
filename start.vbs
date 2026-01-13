@@ -1,3 +1,5 @@
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.CurrentDirectory = "C:\Users\tucke\Repositories\voice-typer"
-WshShell.Run """C:\Users\tucke\Repositories\voice-typer\venv\Scripts\pythonw.exe"" murmurtone.py", 0, False
+Set fso = CreateObject("Scripting.FileSystemObject")
+scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
+WshShell.CurrentDirectory = scriptDir
+WshShell.Run """" & scriptDir & "\venv\Scripts\pythonw.exe"" murmurtone.py", 0, False

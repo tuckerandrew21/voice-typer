@@ -7,6 +7,23 @@
     <meta name="description" content="MurmurTone pricing: $49/year for unlimited offline voice-to-text. 14-day free trial, no credit card required.">
     <link rel="icon" type="image/png" href="/icon.png">
     <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #14b8a6;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --white: #ffffff;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -16,7 +33,8 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: var(--slate-700);
+            background: var(--white);
         }
 
         .container {
@@ -27,9 +45,9 @@
 
         /* Navigation */
         .nav-bar {
-            background: white;
+            background: var(--white);
             padding: 15px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--slate-200);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -49,7 +67,7 @@
             align-items: center;
             gap: 10px;
             text-decoration: none;
-            color: #222;
+            color: var(--slate-800);
             font-weight: 700;
             font-size: 1.2em;
         }
@@ -67,39 +85,45 @@
 
         .nav-links a {
             text-decoration: none;
-            color: #666;
+            color: var(--slate-600);
             font-weight: 500;
             transition: color 0.2s;
         }
 
         .nav-links a:hover {
-            color: #667eea;
+            color: var(--primary);
         }
 
         .nav-cta {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
+            background: var(--primary);
+            color: var(--white) !important;
             padding: 8px 20px;
             border-radius: 6px;
             font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .nav-cta:hover {
+            background: var(--primary-dark);
         }
 
         /* Hero */
         .hero {
             padding: 80px 0;
             text-align: center;
-            background: #f9f9f9;
+            background: var(--slate-800);
+            color: var(--white);
         }
 
         .hero h1 {
             font-size: 2.5em;
             margin-bottom: 15px;
-            color: #222;
+            color: var(--white);
         }
 
         .hero p {
             font-size: 1.2em;
-            color: #666;
+            color: var(--slate-300);
             max-width: 600px;
             margin: 0 auto;
         }
@@ -112,23 +136,23 @@
         .pricing-card {
             max-width: 450px;
             margin: 0 auto;
-            background: white;
+            background: var(--white);
             border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.15);
+            box-shadow: 0 10px 40px rgba(13, 148, 136, 0.15);
             overflow: hidden;
-            border: 2px solid #667eea;
+            border: 2px solid var(--primary);
         }
 
         .pricing-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--slate-800);
+            color: var(--white);
             padding: 30px;
             text-align: center;
         }
 
         .pricing-header .badge {
             display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--primary);
             padding: 5px 15px;
             border-radius: 20px;
             font-size: 0.85em;
@@ -156,7 +180,7 @@
         .pricing-header .trial {
             margin-top: 15px;
             font-size: 1em;
-            opacity: 0.95;
+            color: var(--slate-300);
         }
 
         .pricing-body {
@@ -170,10 +194,11 @@
 
         .pricing-features li {
             padding: 12px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--slate-200);
             display: flex;
             align-items: center;
             gap: 12px;
+            color: var(--slate-700);
         }
 
         .pricing-features li:last-child {
@@ -181,68 +206,67 @@
         }
 
         .pricing-features .check {
-            color: #667eea;
-            font-weight: bold;
-            font-size: 1.2em;
+            color: var(--primary);
+            flex-shrink: 0;
         }
 
         .cta-button {
             display: block;
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--primary);
+            color: var(--white);
             text-decoration: none;
             border-radius: 8px;
             font-weight: 600;
             font-size: 1.1em;
             text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: background 0.2s, transform 0.2s;
         }
 
         .cta-button:hover {
+            background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
 
         .pricing-note {
             text-align: center;
             margin-top: 15px;
-            color: #999;
+            color: var(--slate-500);
             font-size: 0.9em;
         }
 
         /* Comparison */
         .comparison {
             padding: 60px 0;
-            background: #f9f9f9;
+            background: var(--slate-50);
         }
 
         .comparison h2 {
             font-size: 2em;
             text-align: center;
             margin-bottom: 15px;
-            color: #222;
+            color: var(--slate-800);
         }
 
         .comparison > .container > p {
             text-align: center;
-            color: #666;
+            color: var(--slate-600);
             margin-bottom: 40px;
         }
 
         .comparison-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            background: var(--white);
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
 
         .comparison-table th {
-            background: #667eea;
-            color: white;
+            background: var(--slate-800);
+            color: var(--white);
             padding: 18px 15px;
             text-align: left;
             font-weight: 600;
@@ -258,11 +282,12 @@
 
         .comparison-table td {
             padding: 15px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--slate-200);
+            color: var(--slate-700);
         }
 
         .comparison-table tr:nth-child(even) {
-            background: #fafafa;
+            background: var(--slate-50);
         }
 
         .comparison-table tr:last-child td {
@@ -270,12 +295,12 @@
         }
 
         .highlight {
-            background: rgba(102, 126, 234, 0.05) !important;
+            background: rgba(13, 148, 136, 0.08) !important;
         }
 
         .highlight td:first-child {
             font-weight: 600;
-            color: #667eea;
+            color: var(--primary);
         }
 
         /* What's Included */
@@ -287,7 +312,7 @@
             font-size: 2em;
             text-align: center;
             margin-bottom: 40px;
-            color: #222;
+            color: var(--slate-800);
         }
 
         .included-grid {
@@ -297,28 +322,31 @@
         }
 
         .included-item {
-            background: white;
+            background: var(--white);
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
             display: flex;
             gap: 15px;
             align-items: flex-start;
+            border: 1px solid var(--slate-200);
         }
 
         .included-icon {
-            font-size: 1.8em;
-            line-height: 1;
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            color: var(--primary);
         }
 
         .included-item h3 {
             font-size: 1.1em;
             margin-bottom: 5px;
-            color: #222;
+            color: var(--slate-800);
         }
 
         .included-item p {
-            color: #666;
+            color: var(--slate-600);
             font-size: 0.95em;
             line-height: 1.6;
         }
@@ -326,14 +354,14 @@
         /* FAQ */
         .faq {
             padding: 60px 0;
-            background: #f9f9f9;
+            background: var(--slate-50);
         }
 
         .faq h2 {
             font-size: 2em;
             text-align: center;
             margin-bottom: 40px;
-            color: #222;
+            color: var(--slate-800);
         }
 
         .faq-list {
@@ -342,17 +370,18 @@
         }
 
         .faq-item {
-            background: white;
+            background: var(--white);
             border-radius: 8px;
             margin-bottom: 15px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             overflow: hidden;
+            border: 1px solid var(--slate-200);
         }
 
         .faq-question {
             padding: 20px 25px;
             font-weight: 600;
-            color: #222;
+            color: var(--slate-800);
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -361,18 +390,18 @@
         }
 
         .faq-question:hover {
-            background: #f5f5f5;
+            background: var(--slate-50);
         }
 
         .faq-question::after {
             content: '+';
             font-size: 1.5em;
-            color: #667eea;
+            color: var(--primary);
             font-weight: 300;
         }
 
         .faq-item.active .faq-question::after {
-            content: '−';
+            content: '\2212';
         }
 
         .faq-answer {
@@ -380,7 +409,7 @@
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-            color: #666;
+            color: var(--slate-600);
             line-height: 1.8;
         }
 
@@ -391,8 +420,8 @@
 
         /* CTA Section */
         .cta-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--slate-800);
+            color: var(--white);
             padding: 60px 0;
             text-align: center;
         }
@@ -405,21 +434,25 @@
         .cta-section p {
             font-size: 1.1em;
             margin-bottom: 30px;
-            opacity: 0.95;
+            color: var(--slate-300);
         }
 
         .cta-section .cta-button {
             display: inline-block;
             width: auto;
             padding: 14px 40px;
-            background: white;
-            color: #667eea;
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .cta-section .cta-button:hover {
+            background: var(--primary-light);
         }
 
         /* Footer */
         footer {
-            background: #222;
-            color: #999;
+            background: var(--slate-900);
+            color: var(--slate-400);
             padding: 60px 0 30px;
         }
 
@@ -431,7 +464,7 @@
         }
 
         .footer-column h4 {
-            color: white;
+            color: var(--white);
             font-size: 1em;
             margin-bottom: 15px;
             font-weight: 600;
@@ -439,7 +472,7 @@
 
         .footer-column a {
             display: block;
-            color: #999;
+            color: var(--slate-400);
             text-decoration: none;
             margin-bottom: 10px;
             font-size: 0.9em;
@@ -447,11 +480,11 @@
         }
 
         .footer-column a:hover {
-            color: #667eea;
+            color: var(--primary-light);
         }
 
         .footer-bottom {
-            border-top: 1px solid #333;
+            border-top: 1px solid var(--slate-700);
             padding-top: 30px;
             text-align: center;
             font-size: 0.9em;
@@ -469,7 +502,7 @@
         .nav-hamburger span {
             width: 25px;
             height: 3px;
-            background: #333;
+            background: var(--slate-700);
             border-radius: 2px;
             transition: all 0.3s;
         }
@@ -493,7 +526,7 @@
             top: 62px;
             left: 0;
             right: 0;
-            background: white;
+            background: var(--white);
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             z-index: 99;
@@ -506,10 +539,10 @@
         .mobile-menu a {
             display: block;
             padding: 12px 0;
-            color: #333;
+            color: var(--slate-700);
             text-decoration: none;
             font-weight: 500;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--slate-200);
         }
 
         .mobile-menu a:last-child {
@@ -517,20 +550,20 @@
         }
 
         .mobile-menu a:hover {
-            color: #667eea;
+            color: var(--primary);
         }
 
         .mobile-menu .nav-cta {
             display: inline-block;
             margin-top: 15px;
             text-align: center;
-            color: white;
+            color: var(--white);
         }
 
         /* Focus States */
         a:focus-visible,
         button:focus-visible {
-            outline: 2px solid #667eea;
+            outline: 2px solid var(--primary);
             outline-offset: 2px;
         }
 
@@ -619,15 +652,15 @@
                 </div>
                 <div class="pricing-body">
                     <ul class="pricing-features">
-                        <li><span class="check">✓</span> Unlimited transcription</li>
-                        <li><span class="check">✓</span> All speech models (tiny to medium)</li>
-                        <li><span class="check">✓</span> AI text cleanup (with Ollama)</li>
-                        <li><span class="check">✓</span> Translation mode (18+ languages)</li>
-                        <li><span class="check">✓</span> Audio file transcription</li>
-                        <li><span class="check">✓</span> Custom vocabulary</li>
-                        <li><span class="check">✓</span> Voice commands</li>
-                        <li><span class="check">✓</span> 100% offline processing</li>
-                        <li><span class="check">✓</span> Priority support</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> Unlimited transcription</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> All speech models (tiny to medium)</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> AI text cleanup (with Ollama)</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> Translation mode (18+ languages)</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> Audio file transcription</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> Custom vocabulary</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> Voice commands</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> 100% offline processing</li>
+                        <li><svg class="check" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"></polyline></svg> Priority support</li>
                     </ul>
                     <a href="/install.html" class="cta-button">Start Free 14-Day Trial</a>
                     <p class="pricing-note">No credit card required</p>
@@ -640,7 +673,7 @@
     <section class="comparison">
         <div class="container">
             <h2>How We Compare</h2>
-            <p>MurmurTone offers more value at a lower price—without sacrificing your privacy.</p>
+            <p>MurmurTone offers more value at a lower price - without sacrificing your privacy.</p>
             <div class="table-wrapper">
             <table class="comparison-table">
                 <thead>
@@ -656,43 +689,43 @@
                     <tr class="highlight">
                         <td>MurmurTone</td>
                         <td><strong>$49/year</strong></td>
-                        <td>✓ 100%</td>
-                        <td>✓ Local</td>
+                        <td>100%</td>
+                        <td>Local</td>
                         <td>Windows</td>
                     </tr>
                     <tr>
                         <td>Wispr Flow</td>
                         <td>$120/year</td>
-                        <td>✗ Cloud</td>
-                        <td>✓ Cloud</td>
+                        <td>Cloud</td>
+                        <td>Cloud</td>
                         <td>Mac</td>
                     </tr>
                     <tr>
                         <td>SuperWhisper</td>
                         <td>$96-144/year</td>
                         <td>Hybrid</td>
-                        <td>✗</td>
+                        <td>-</td>
                         <td>Mac/iOS</td>
                     </tr>
                     <tr>
                         <td>Voicy</td>
                         <td>$180/year</td>
-                        <td>✗ Cloud</td>
-                        <td>✓ Cloud</td>
+                        <td>Cloud</td>
+                        <td>Cloud</td>
                         <td>Mac</td>
                     </tr>
                     <tr>
                         <td>Dragon Professional</td>
                         <td>$500 one-time</td>
-                        <td>✓ Local</td>
-                        <td>✗</td>
+                        <td>Local</td>
+                        <td>-</td>
                         <td>Windows</td>
                     </tr>
                     <tr>
                         <td>Otter.ai</td>
                         <td>$100-200/year</td>
-                        <td>✗ Cloud</td>
-                        <td>✗</td>
+                        <td>Cloud</td>
+                        <td>-</td>
                         <td>Web/Mobile</td>
                     </tr>
                 </tbody>
@@ -707,56 +740,83 @@
             <h2>Everything You Need</h2>
             <div class="included-grid">
                 <div class="included-item">
-                    <div class="included-icon">🔒</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
                     <div>
                         <h3>100% Offline</h3>
                         <p>All processing happens on your machine. No cloud uploads, ever.</p>
                     </div>
                 </div>
                 <div class="included-item">
-                    <div class="included-icon">🤖</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path d="M12 2a10 10 0 1 0 10 10"></path>
+                        <path d="M12 12l8-8"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
                     <div>
                         <h3>AI Text Cleanup</h3>
                         <p>Grammar fixes and formality adjustment via local Ollama integration.</p>
                     </div>
                 </div>
                 <div class="included-item">
-                    <div class="included-icon">🌐</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
                     <div>
                         <h3>Translation Mode</h3>
                         <p>Speak in any of 18+ languages, output in English automatically.</p>
                     </div>
                 </div>
                 <div class="included-item">
-                    <div class="included-icon">🎵</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path d="M9 18V5l12-2v13"></path>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <circle cx="18" cy="16" r="3"></circle>
+                    </svg>
                     <div>
                         <h3>Audio Transcription</h3>
                         <p>Transcribe MP3, WAV, M4A files directly. Great for podcasts and meetings.</p>
                     </div>
                 </div>
                 <div class="included-item">
-                    <div class="included-icon">📚</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
                     <div>
                         <h3>Custom Vocabulary</h3>
                         <p>Add technical terms, names, and jargon for better recognition.</p>
                     </div>
                 </div>
                 <div class="included-item">
-                    <div class="included-icon">🎤</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="22"></line>
+                    </svg>
                     <div>
                         <h3>Voice Commands</h3>
                         <p>Punctuation, navigation, editing, and case manipulation commands.</p>
                     </div>
                 </div>
                 <div class="included-item">
-                    <div class="included-icon">⚡</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
                     <div>
                         <h3>GPU Acceleration</h3>
                         <p>Optional NVIDIA CUDA support for faster transcription.</p>
                     </div>
                 </div>
                 <div class="included-item">
-                    <div class="included-icon">🎛️</div>
+                    <svg class="included-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
                     <div>
                         <h3>Multiple Models</h3>
                         <p>Choose from tiny (fast) to medium (accurate) based on your needs.</p>

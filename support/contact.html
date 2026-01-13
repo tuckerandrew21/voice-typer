@@ -7,69 +7,89 @@
     <meta name="description" content="Get help with MurmurTone. Contact our support team for technical issues, licensing questions, or general inquiries.">
     <link rel="icon" type="image/png" href="/icon.png">
     <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #14b8a6;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --white: #ffffff;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; background: #f9f9f9; }
-        .nav-bar { background: white; padding: 15px 0; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--slate-700); background: var(--slate-50); }
+        .nav-bar { background: var(--white); padding: 15px 0; border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 100; }
         .nav-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #222; font-weight: 700; font-size: 1.2em; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--slate-800); font-weight: 700; font-size: 1.2em; }
         .nav-logo img { height: 32px; width: 32px; }
         .nav-links { display: flex; gap: 30px; align-items: center; }
-        .nav-links a { text-decoration: none; color: #666; font-weight: 500; transition: color 0.2s; }
-        .nav-links a:hover { color: #667eea; }
-        .nav-cta { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
-        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 20px; text-align: center; }
+        .nav-links a { text-decoration: none; color: var(--slate-600); font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-cta { background: var(--primary); color: var(--white) !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-cta:hover { background: var(--primary-dark); }
+        .hero { background: var(--slate-800); color: var(--white); padding: 60px 20px; text-align: center; }
         .hero h1 { font-size: 2.5em; margin-bottom: 15px; }
-        .hero p { font-size: 1.2em; opacity: 0.95; max-width: 600px; margin: 0 auto; }
+        .hero p { font-size: 1.2em; color: var(--slate-300); max-width: 600px; margin: 0 auto; }
         .contact-container { max-width: 1000px; margin: 0 auto; padding: 60px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-        .contact-info { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .contact-info h2 { font-size: 1.5em; margin-bottom: 25px; color: #222; }
-        .contact-method { display: flex; gap: 15px; margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid #eee; }
-        .contact-method:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .contact-icon { width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5em; flex-shrink: 0; }
-        .contact-details h3 { font-size: 1.1em; margin-bottom: 5px; color: #333; }
-        .contact-details p { color: #666; font-size: 0.95em; margin-bottom: 5px; }
-        .contact-details a { color: #667eea; text-decoration: none; font-weight: 500; }
+        .contact-info { background: var(--white); border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .contact-info h2 { font-size: 1.5em; margin-bottom: 25px; color: var(--slate-800); }
+        .contact-method { display: flex; gap: 15px; margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid var(--slate-200); }
+        .contact-method:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .contact-icon { width: 50px; height: 50px; background: var(--slate-800); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .contact-icon svg { width: 24px; height: 24px; stroke: var(--primary-light); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .contact-details h3 { font-size: 1.1em; margin-bottom: 5px; color: var(--slate-700); }
+        .contact-details p { color: var(--slate-500); font-size: 0.95em; margin-bottom: 5px; }
+        .contact-details a { color: var(--primary); text-decoration: none; font-weight: 500; }
         .contact-details a:hover { text-decoration: underline; }
-        .contact-form-section { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .contact-form-section h2 { font-size: 1.5em; margin-bottom: 25px; color: #222; }
+        .contact-form-section { background: var(--white); border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .contact-form-section h2 { font-size: 1.5em; margin-bottom: 25px; color: var(--slate-800); }
         .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; }
-        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--slate-700); }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px 15px; border: 1px solid var(--slate-300); border-radius: 6px; font-size: 1em; font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; background: var(--white); color: var(--slate-700); }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
         .form-group textarea { min-height: 150px; resize: vertical; }
-        .form-group small { display: block; margin-top: 5px; color: #999; font-size: 0.85em; }
-        .btn-submit { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 30px; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
-        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .response-times { background: #f5f5f5; border-radius: 8px; padding: 20px; margin-top: 25px; }
-        .response-times h4 { font-size: 1em; margin-bottom: 10px; color: #333; }
-        .response-times p { color: #666; font-size: 0.9em; margin-bottom: 5px; }
+        .form-group small { display: block; margin-top: 5px; color: var(--slate-500); font-size: 0.85em; }
+        .btn-submit { background: var(--primary); color: var(--white); border: none; padding: 14px 30px; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; }
+        .btn-submit:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .response-times { background: var(--slate-100); border-radius: 8px; padding: 20px; margin-top: 25px; }
+        .response-times h4 { font-size: 1em; margin-bottom: 10px; color: var(--slate-700); }
+        .response-times p { color: var(--slate-600); font-size: 0.9em; margin-bottom: 5px; }
         .helpful-links { margin-top: 40px; }
-        .helpful-links h3 { font-size: 1.2em; margin-bottom: 15px; color: #222; }
-        .link-card { display: flex; gap: 15px; padding: 15px; background: #f9f9f9; border-radius: 8px; margin-bottom: 10px; text-decoration: none; color: inherit; transition: all 0.2s; }
-        .link-card:hover { background: #f0f0f0; transform: translateX(5px); }
-        .link-icon { font-size: 1.5em; }
-        .link-text h4 { font-size: 1em; color: #333; margin-bottom: 3px; }
-        .link-text p { font-size: 0.9em; color: #666; }
-        .footer { background: white; padding: 40px 20px; margin-top: 60px; border-top: 1px solid #eee; }
+        .helpful-links h3 { font-size: 1.2em; margin-bottom: 15px; color: var(--slate-800); }
+        .link-card { display: flex; gap: 15px; padding: 15px; background: var(--slate-50); border-radius: 8px; margin-bottom: 10px; text-decoration: none; color: inherit; transition: all 0.2s; border: 1px solid var(--slate-200); }
+        .link-card:hover { background: var(--slate-100); transform: translateX(5px); border-color: var(--primary); }
+        .link-icon { width: 40px; height: 40px; background: var(--slate-800); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .link-icon svg { width: 20px; height: 20px; stroke: var(--primary-light); fill: none; stroke-width: 2; }
+        .link-text h4 { font-size: 1em; color: var(--slate-700); margin-bottom: 3px; }
+        .link-text p { font-size: 0.9em; color: var(--slate-500); }
+        .footer { background: var(--slate-800); padding: 40px 20px; margin-top: 60px; }
         .footer-content { max-width: 1000px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .footer-content p { color: var(--slate-400); }
         .footer-links { display: flex; gap: 30px; }
-        .footer-links a { color: #666; text-decoration: none; }
-        .footer-links a:hover { color: #667eea; }
+        .footer-links a { color: var(--slate-400); text-decoration: none; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--primary-light); }
         /* Hamburger Menu */
         .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
-        .nav-hamburger span { width: 25px; height: 3px; background: #333; border-radius: 2px; transition: all 0.3s; }
+        .nav-hamburger span { width: 25px; height: 3px; background: var(--slate-700); border-radius: 2px; transition: all 0.3s; }
         .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
         .nav-hamburger.active span:nth-child(2) { opacity: 0; }
         .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
         /* Mobile Menu */
-        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
+        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: var(--white); padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
         .mobile-menu.active { display: block; }
-        .mobile-menu a { display: block; padding: 12px 0; color: #333; text-decoration: none; font-weight: 500; border-bottom: 1px solid #eee; }
+        .mobile-menu a { display: block; padding: 12px 0; color: var(--slate-700); text-decoration: none; font-weight: 500; border-bottom: 1px solid var(--slate-200); }
         .mobile-menu a:last-child { border-bottom: none; }
-        .mobile-menu a:hover { color: #667eea; }
-        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: white; }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: var(--white); }
         /* Focus States */
-        a:focus-visible, button:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+        a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         @media (max-width: 768px) {
             .nav-hamburger { display: flex; }
             .nav-links { display: none; }
@@ -117,7 +137,9 @@
             <h2>Get in Touch</h2>
 
             <div class="contact-method">
-                <div class="contact-icon">&#9993;</div>
+                <div class="contact-icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
                 <div class="contact-details">
                     <h3>Email Support</h3>
                     <p>Best for detailed questions and technical issues</p>
@@ -126,16 +148,20 @@
             </div>
 
             <div class="contact-method">
-                <div class="contact-icon">&#128187;</div>
+                <div class="contact-icon">
+                    <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                </div>
                 <div class="contact-details">
                     <h3>GitHub Issues</h3>
                     <p>Report bugs or request features</p>
-                    <a href="https://github.com/tuckerandrew21/murmurtone/issues" target="_blank">Open an Issue</a>
+                    <a href="https://github.com/tuckerandrew21/murmurtone/issues" target="_blank" rel="noopener">Open an Issue</a>
                 </div>
             </div>
 
             <div class="contact-method">
-                <div class="contact-icon">&#128218;</div>
+                <div class="contact-icon">
+                    <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                </div>
                 <div class="contact-details">
                     <h3>Documentation</h3>
                     <p>Guides, tutorials, and troubleshooting</p>
@@ -154,7 +180,9 @@
                 <h3>Before You Contact Us</h3>
 
                 <a href="/support/faq.html" class="link-card">
-                    <span class="link-icon">&#10067;</span>
+                    <div class="link-icon">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
                     <div class="link-text">
                         <h4>Check the FAQ</h4>
                         <p>Common questions answered</p>
@@ -162,7 +190,9 @@
                 </a>
 
                 <a href="/docs/troubleshooting.html" class="link-card">
-                    <span class="link-icon">&#128295;</span>
+                    <div class="link-icon">
+                        <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    </div>
                     <div class="link-text">
                         <h4>Troubleshooting Guide</h4>
                         <p>Solutions for common issues</p>
@@ -170,7 +200,9 @@
                 </a>
 
                 <a href="/docs/" class="link-card">
-                    <span class="link-icon">&#128214;</span>
+                    <div class="link-icon">
+                        <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    </div>
                     <div class="link-text">
                         <h4>Getting Started</h4>
                         <p>Setup and basic usage</p>
@@ -224,8 +256,8 @@
                 <button type="submit" class="btn-submit">Send Message</button>
             </form>
 
-            <p style="margin-top: 20px; text-align: center; color: #999; font-size: 0.9em;">
-                Or email us directly at <a href="mailto:support@murmurtone.com" style="color: #667eea;">support@murmurtone.com</a>
+            <p style="margin-top: 20px; text-align: center; color: var(--slate-500); font-size: 0.9em;">
+                Or email us directly at <a href="mailto:support@murmurtone.com" style="color: var(--primary);">support@murmurtone.com</a>
             </p>
         </div>
     </main>

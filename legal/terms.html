@@ -7,55 +7,75 @@
     <meta name="description" content="MurmurTone terms of service. Clear, fair terms for using our privacy-first voice-to-text software.">
     <link rel="icon" type="image/png" href="/icon.png">
     <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #14b8a6;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --white: #ffffff;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
-        .nav-bar { background: white; padding: 15px 0; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--slate-700); }
+        .nav-bar { background: var(--white); padding: 15px 0; border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 100; }
         .nav-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #222; font-weight: 700; font-size: 1.2em; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--slate-800); font-weight: 700; font-size: 1.2em; }
         .nav-logo img { height: 32px; width: 32px; }
         .nav-links { display: flex; gap: 30px; align-items: center; }
-        .nav-links a { text-decoration: none; color: #666; font-weight: 500; transition: color 0.2s; }
-        .nav-links a:hover { color: #667eea; }
-        .nav-cta { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-links a { text-decoration: none; color: var(--slate-600); font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-cta { background: var(--primary); color: var(--white) !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-cta:hover { background: var(--primary-dark); }
         .legal-content { max-width: 800px; margin: 0 auto; padding: 60px 20px; }
-        .legal-content h1 { font-size: 2.5em; margin-bottom: 10px; color: #222; }
-        .legal-content .subtitle { font-size: 1.1em; color: #666; margin-bottom: 15px; }
-        .legal-content .last-updated { font-size: 0.9em; color: #999; margin-bottom: 40px; }
-        .legal-content h2 { font-size: 1.4em; margin: 40px 0 15px; color: #222; }
-        .legal-content h3 { font-size: 1.1em; margin: 25px 0 10px; color: #333; }
-        .legal-content p { margin-bottom: 15px; color: #444; }
+        .legal-content h1 { font-size: 2.5em; margin-bottom: 10px; color: var(--slate-800); }
+        .legal-content .subtitle { font-size: 1.1em; color: var(--slate-600); margin-bottom: 15px; }
+        .legal-content .last-updated { font-size: 0.9em; color: var(--slate-500); margin-bottom: 40px; }
+        .legal-content h2 { font-size: 1.4em; margin: 40px 0 15px; color: var(--slate-800); }
+        .legal-content h3 { font-size: 1.1em; margin: 25px 0 10px; color: var(--slate-700); }
+        .legal-content p { margin-bottom: 15px; color: var(--slate-600); }
         .legal-content ul, .legal-content ol { margin: 15px 0; padding-left: 25px; }
-        .legal-content li { margin-bottom: 8px; }
-        .legal-content a { color: #667eea; text-decoration: none; }
+        .legal-content li { margin-bottom: 8px; color: var(--slate-600); }
+        .legal-content a { color: var(--primary); text-decoration: none; }
         .legal-content a:hover { text-decoration: underline; }
-        .highlight-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin: 30px 0; }
-        .highlight-box h3 { color: white; margin-top: 0; font-size: 1.3em; }
-        .highlight-box p { color: rgba(255,255,255,0.95); margin-bottom: 0; }
-        .highlight-box ul { color: rgba(255,255,255,0.95); margin-bottom: 0; }
+        .highlight-box { background: var(--slate-800); color: var(--white); padding: 30px; border-radius: 12px; margin: 30px 0; }
+        .highlight-box h3 { color: var(--white); margin-top: 0; font-size: 1.3em; }
+        .highlight-box p { color: rgba(255,255,255,0.9); margin-bottom: 0; }
+        .highlight-box ul { color: rgba(255,255,255,0.9); margin-bottom: 0; }
+        .highlight-box li { color: rgba(255,255,255,0.9); }
         .callout { padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .callout-info { background: #e8f4fd; border-left: 4px solid #667eea; }
+        .callout-info { background: rgba(13, 148, 136, 0.1); border-left: 4px solid var(--primary); }
         .callout-warning { background: #fff8e6; border-left: 4px solid #f59e0b; }
-        .callout strong { display: block; margin-bottom: 5px; }
-        .footer { background: #f9f9f9; padding: 40px 20px; margin-top: 60px; border-top: 1px solid #eee; }
+        .callout strong { display: block; margin-bottom: 5px; color: var(--slate-800); }
+        .callout p { margin-bottom: 0; }
+        .footer { background: var(--slate-800); padding: 40px 20px; margin-top: 60px; }
         .footer-content { max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .footer-content p { color: var(--slate-400); }
         .footer-links { display: flex; gap: 30px; }
-        .footer-links a { color: #666; text-decoration: none; }
-        .footer-links a:hover { color: #667eea; }
+        .footer-links a { color: var(--slate-400); text-decoration: none; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--primary-light); }
         /* Hamburger Menu */
         .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
-        .nav-hamburger span { width: 25px; height: 3px; background: #333; border-radius: 2px; transition: all 0.3s; }
+        .nav-hamburger span { width: 25px; height: 3px; background: var(--slate-700); border-radius: 2px; transition: all 0.3s; }
         .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
         .nav-hamburger.active span:nth-child(2) { opacity: 0; }
         .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
         /* Mobile Menu */
-        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
+        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: var(--white); padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
         .mobile-menu.active { display: block; }
-        .mobile-menu a { display: block; padding: 12px 0; color: #333; text-decoration: none; font-weight: 500; border-bottom: 1px solid #eee; }
+        .mobile-menu a { display: block; padding: 12px 0; color: var(--slate-700); text-decoration: none; font-weight: 500; border-bottom: 1px solid var(--slate-200); }
         .mobile-menu a:last-child { border-bottom: none; }
-        .mobile-menu a:hover { color: #667eea; }
-        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: white; }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: var(--white); }
         /* Focus States */
-        a:focus-visible, button:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+        a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         @media (max-width: 768px) { .nav-hamburger { display: flex; } .nav-links { display: none; } .legal-content h1 { font-size: 2em; } .footer-content { flex-direction: column; text-align: center; } .footer-links { flex-wrap: wrap; justify-content: center; } }
     </style>
 </head>
@@ -147,7 +167,7 @@
         <p>If you purchase during the Early Access period, your renewal rate is locked at $49/year for as long as you maintain a continuous subscription. If you cancel and later resubscribe, you will pay the then-current rate.</p>
 
         <h3>3.3 Payment Processing</h3>
-        <p>Payments are processed by Gumroad. By purchasing, you also agree to <a href="https://gumroad.com/terms" target="_blank">Gumroad's Terms of Service</a>.</p>
+        <p>Payments are processed by Gumroad. By purchasing, you also agree to <a href="https://gumroad.com/terms" target="_blank" rel="noopener">Gumroad's Terms of Service</a>.</p>
 
         <h3>3.4 Automatic Renewal</h3>
         <p>Pro licenses automatically renew annually unless cancelled. You can cancel at any time through your Gumroad account. Cancellation takes effect at the end of your current billing period.</p>
@@ -262,7 +282,7 @@
         <p>For questions about these Terms:</p>
         <ul>
             <li>Email: <a href="mailto:support@murmurtone.com">support@murmurtone.com</a></li>
-            <li>GitHub: <a href="https://github.com/tuckerandrew21/murmurtone/issues">Open an issue</a></li>
+            <li>GitHub: <a href="https://github.com/tuckerandrew21/murmurtone/issues" rel="noopener">Open an issue</a></li>
         </ul>
 
         <div class="highlight-box" style="margin-top: 40px;">

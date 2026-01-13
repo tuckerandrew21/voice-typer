@@ -7,77 +7,108 @@
     <meta name="description" content="MurmurTone press kit. Download logos, screenshots, and get key information about MurmurTone for media coverage.">
     <link rel="icon" type="image/png" href="/icon.png">
     <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #14b8a6;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --white: #ffffff;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
-        .nav-bar { background: white; padding: 15px 0; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--slate-700); }
+        .nav-bar { background: var(--white); padding: 15px 0; border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 100; }
         .nav-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #222; font-weight: 700; font-size: 1.2em; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--slate-800); font-weight: 700; font-size: 1.2em; }
         .nav-logo img { height: 32px; width: 32px; }
         .nav-links { display: flex; gap: 30px; align-items: center; }
-        .nav-links a { text-decoration: none; color: #666; font-weight: 500; transition: color 0.2s; }
-        .nav-links a:hover { color: #667eea; }
-        .nav-cta { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
-        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 20px; text-align: center; }
+        .nav-links a { text-decoration: none; color: var(--slate-600); font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-cta { background: var(--primary); color: var(--white) !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-cta:hover { background: var(--primary-dark); }
+        .hero { background: var(--slate-800); color: var(--white); padding: 80px 20px; text-align: center; }
         .hero h1 { font-size: 3em; margin-bottom: 15px; }
-        .hero p { font-size: 1.3em; opacity: 0.95; max-width: 600px; margin: 0 auto; }
+        .hero p { font-size: 1.3em; color: var(--slate-300); max-width: 600px; margin: 0 auto; }
         .press-content { max-width: 1000px; margin: 0 auto; padding: 60px 20px; }
-        .press-content h2 { font-size: 1.8em; margin: 50px 0 25px; color: #222; }
+        .press-content h2 { font-size: 1.8em; margin: 50px 0 25px; color: var(--slate-800); }
         .press-content h2:first-child { margin-top: 0; }
-        .press-content p { margin-bottom: 15px; color: #444; font-size: 1.05em; }
+        .press-content p { margin-bottom: 15px; color: var(--slate-600); font-size: 1.05em; }
         .fact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin: 30px 0; }
-        .fact-card { background: #f9f9f9; border-radius: 12px; padding: 25px; }
-        .fact-card h3 { font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; color: #999; margin-bottom: 8px; }
-        .fact-card p { font-size: 1.2em; color: #222; margin: 0; font-weight: 500; }
+        .fact-card { background: var(--slate-100); border-radius: 12px; padding: 25px; }
+        .fact-card h3 { font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; color: var(--slate-500); margin-bottom: 8px; }
+        .fact-card p { font-size: 1.2em; color: var(--slate-800); margin: 0; font-weight: 500; }
         .asset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px; margin: 30px 0; }
-        .asset-card { background: white; border: 1px solid #eee; border-radius: 12px; overflow: hidden; text-align: center; transition: all 0.2s; }
-        .asset-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .asset-preview { background: #f5f5f5; padding: 30px; display: flex; align-items: center; justify-content: center; min-height: 120px; }
+        .asset-card { background: var(--white); border: 1px solid var(--slate-200); border-radius: 12px; overflow: hidden; text-align: center; transition: all 0.2s; }
+        .asset-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-color: var(--primary); }
+        .asset-preview { background: var(--slate-100); padding: 30px; display: flex; align-items: center; justify-content: center; min-height: 120px; }
         .asset-preview img { max-width: 80px; max-height: 80px; }
-        .asset-preview.gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .asset-preview.gradient img { filter: brightness(0) invert(1); }
+        .asset-preview.dark { background: var(--slate-800); }
+        .asset-preview.dark img { filter: brightness(0) invert(1); }
         .asset-info { padding: 20px; }
-        .asset-info h4 { margin: 0 0 5px; color: #222; }
-        .asset-info p { margin: 0 0 15px; color: #666; font-size: 0.9em; }
-        .asset-info a { display: inline-block; padding: 8px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-size: 0.9em; font-weight: 500; }
-        .asset-info a:hover { background: #5569d9; }
-        .quote-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 12px; margin: 30px 0; }
+        .asset-info h4 { margin: 0 0 5px; color: var(--slate-800); }
+        .asset-info p { margin: 0 0 15px; color: var(--slate-500); font-size: 0.9em; }
+        .asset-info a { display: inline-block; padding: 8px 20px; background: var(--primary); color: var(--white); text-decoration: none; border-radius: 6px; font-size: 0.9em; font-weight: 500; transition: background 0.2s; }
+        .asset-info a:hover { background: var(--primary-dark); }
+        .quote-box { background: var(--slate-800); color: var(--white); padding: 40px; border-radius: 12px; margin: 30px 0; }
         .quote-box blockquote { font-size: 1.4em; font-style: italic; margin: 0 0 15px; line-height: 1.5; }
-        .quote-box cite { font-size: 1em; opacity: 0.9; }
-        .key-facts { background: #f9f9f9; border-radius: 12px; padding: 30px; margin: 30px 0; }
+        .quote-box cite { font-size: 1em; color: var(--slate-400); }
+        .key-facts { background: var(--slate-100); border-radius: 12px; padding: 30px; margin: 30px 0; }
         .key-facts ul { list-style: none; padding: 0; margin: 0; }
-        .key-facts li { padding: 12px 0; border-bottom: 1px solid #eee; color: #444; }
+        .key-facts li { padding: 12px 0; border-bottom: 1px solid var(--slate-200); color: var(--slate-600); }
         .key-facts li:last-child { border-bottom: none; }
-        .key-facts strong { color: #222; }
-        .contact-box { background: white; border: 2px solid #667eea; border-radius: 12px; padding: 30px; text-align: center; margin: 40px 0; }
-        .contact-box h3 { color: #222; margin-bottom: 15px; }
-        .contact-box p { margin-bottom: 20px; }
-        .contact-box a { color: #667eea; font-weight: 600; text-decoration: none; }
+        .key-facts strong { color: var(--slate-800); }
+        .key-facts a { color: var(--primary); text-decoration: none; }
+        .key-facts a:hover { text-decoration: underline; }
+        .contact-box { background: var(--white); border: 2px solid var(--primary); border-radius: 12px; padding: 30px; text-align: center; margin: 40px 0; }
+        .contact-box h3 { color: var(--slate-800); margin-bottom: 15px; }
+        .contact-box p { margin-bottom: 10px; color: var(--slate-600); }
+        .contact-box a { color: var(--primary); font-weight: 600; text-decoration: none; }
         .contact-box a:hover { text-decoration: underline; }
         .color-swatches { display: flex; gap: 20px; flex-wrap: wrap; margin: 20px 0; }
         .swatch { text-align: center; }
         .swatch-color { width: 80px; height: 80px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .swatch-code { font-family: monospace; font-size: 0.9em; color: #666; }
-        .footer { background: #f9f9f9; padding: 40px 20px; margin-top: 60px; border-top: 1px solid #eee; }
+        .swatch-code { font-family: monospace; font-size: 0.9em; color: var(--slate-600); }
+        .comparison-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .comparison-table th { background: var(--slate-800); color: var(--white); padding: 15px; text-align: left; }
+        .comparison-table th:first-child { border-radius: 8px 0 0 0; }
+        .comparison-table th:last-child { border-radius: 0 8px 0 0; }
+        .comparison-table th:not(:first-child) { text-align: center; }
+        .comparison-table td { padding: 12px 15px; border-bottom: 1px solid var(--slate-200); color: var(--slate-600); }
+        .comparison-table td:not(:first-child) { text-align: center; }
+        .comparison-table .positive { color: #22c55e; font-weight: 600; }
+        .comparison-table .negative { color: #ef4444; }
+        .usage-list { margin: 15px 0; padding-left: 25px; }
+        .usage-list li { margin: 8px 0; color: var(--slate-600); }
+        .footer { background: var(--slate-800); padding: 40px 20px; margin-top: 60px; }
         .footer-content { max-width: 1000px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .footer-content p { color: var(--slate-400); }
         .footer-links { display: flex; gap: 30px; }
-        .footer-links a { color: #666; text-decoration: none; }
-        .footer-links a:hover { color: #667eea; }
+        .footer-links a { color: var(--slate-400); text-decoration: none; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--primary-light); }
         /* Hamburger Menu */
         .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
-        .nav-hamburger span { width: 25px; height: 3px; background: #333; border-radius: 2px; transition: all 0.3s; }
+        .nav-hamburger span { width: 25px; height: 3px; background: var(--slate-700); border-radius: 2px; transition: all 0.3s; }
         .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
         .nav-hamburger.active span:nth-child(2) { opacity: 0; }
         .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
         /* Mobile Menu */
-        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
+        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: var(--white); padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
         .mobile-menu.active { display: block; }
-        .mobile-menu a { display: block; padding: 12px 0; color: #333; text-decoration: none; font-weight: 500; border-bottom: 1px solid #eee; }
+        .mobile-menu a { display: block; padding: 12px 0; color: var(--slate-700); text-decoration: none; font-weight: 500; border-bottom: 1px solid var(--slate-200); }
         .mobile-menu a:last-child { border-bottom: none; }
-        .mobile-menu a:hover { color: #667eea; }
-        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: white; }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: var(--white); }
         /* Focus States */
-        a:focus-visible, button:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
-        @media (max-width: 768px) { .nav-hamburger { display: flex; } .nav-links { display: none; } .hero h1 { font-size: 2em; } .fact-grid { grid-template-columns: 1fr; } .footer-content { flex-direction: column; text-align: center; } .footer-links { flex-wrap: wrap; justify-content: center; } }
+        a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        @media (max-width: 768px) { .nav-hamburger { display: flex; } .nav-links { display: none; } .hero h1 { font-size: 2em; } .fact-grid { grid-template-columns: 1fr; } .footer-content { flex-direction: column; text-align: center; } .footer-links { flex-wrap: wrap; justify-content: center; } .comparison-table { font-size: 0.9em; } }
     </style>
 </head>
 <body>
@@ -163,39 +194,39 @@
         </div>
 
         <h2>Comparison to Competitors</h2>
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <table class="comparison-table">
             <thead>
-                <tr style="background: #f5f5f5;">
-                    <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Feature</th>
-                    <th style="padding: 15px; text-align: center; border-bottom: 2px solid #ddd;">MurmurTone</th>
-                    <th style="padding: 15px; text-align: center; border-bottom: 2px solid #ddd;">Cloud Competitors</th>
+                <tr>
+                    <th>Feature</th>
+                    <th>MurmurTone</th>
+                    <th>Cloud Competitors</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">Processing Location</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center; color: #22c55e; font-weight: 600;">100% Local</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center; color: #ef4444;">Cloud Servers</td>
+                    <td>Processing Location</td>
+                    <td class="positive">100% Local</td>
+                    <td class="negative">Cloud Servers</td>
                 </tr>
                 <tr>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">Voice Data Transmitted</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center; color: #22c55e; font-weight: 600;">Never</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center; color: #ef4444;">Always</td>
+                    <td>Voice Data Transmitted</td>
+                    <td class="positive">Never</td>
+                    <td class="negative">Always</td>
                 </tr>
                 <tr>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">Works Offline</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center; color: #22c55e; font-weight: 600;">Yes</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center; color: #ef4444;">No</td>
+                    <td>Works Offline</td>
+                    <td class="positive">Yes</td>
+                    <td class="negative">No</td>
                 </tr>
                 <tr>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">Annual Price</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center; color: #22c55e; font-weight: 600;">$49</td>
-                    <td style="padding: 12px 15px; border-bottom: 1px solid #eee; text-align: center;">$96-180</td>
+                    <td>Annual Price</td>
+                    <td class="positive">$49</td>
+                    <td>$96-180</td>
                 </tr>
                 <tr>
-                    <td style="padding: 12px 15px;">Account Required</td>
-                    <td style="padding: 12px 15px; text-align: center; color: #22c55e; font-weight: 600;">No</td>
-                    <td style="padding: 12px 15px; text-align: center; color: #ef4444;">Yes</td>
+                    <td>Account Required</td>
+                    <td class="positive">No</td>
+                    <td class="negative">Yes</td>
                 </tr>
             </tbody>
         </table>
@@ -215,13 +246,13 @@
                 </div>
             </div>
             <div class="asset-card">
-                <div class="asset-preview gradient">
+                <div class="asset-preview dark">
                     <img src="/icon.png" alt="MurmurTone Logo White">
                 </div>
                 <div class="asset-info">
                     <h4>Logo Icon (SVG)</h4>
                     <p>Vector format, scalable</p>
-                    <a href="/icon.svg" download>Download</a>
+                    <a href="/assets/logo/murmurtone-icon.svg" download>Download</a>
                 </div>
             </div>
             <div class="asset-card">
@@ -239,23 +270,23 @@
         <h2>Brand Colors</h2>
         <div class="color-swatches">
             <div class="swatch">
-                <div class="swatch-color" style="background: #667eea;"></div>
-                <div class="swatch-code">#667eea</div>
+                <div class="swatch-color" style="background: #1e293b;"></div>
+                <div class="swatch-code">#1e293b</div>
             </div>
             <div class="swatch">
-                <div class="swatch-color" style="background: #764ba2;"></div>
-                <div class="swatch-code">#764ba2</div>
+                <div class="swatch-color" style="background: #0d9488;"></div>
+                <div class="swatch-code">#0d9488</div>
             </div>
             <div class="swatch">
-                <div class="swatch-color" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
-                <div class="swatch-code">Gradient</div>
+                <div class="swatch-color" style="background: #14b8a6;"></div>
+                <div class="swatch-code">#14b8a6</div>
             </div>
         </div>
 
         <h2>Product Information</h2>
         <div class="key-facts">
             <ul>
-                <li><strong>Website:</strong> <a href="https://murmurtone.com" style="color: #667eea;">murmurtone.com</a></li>
+                <li><strong>Website:</strong> <a href="https://murmurtone.com">murmurtone.com</a></li>
                 <li><strong>Tagline:</strong> "Your voice, locally."</li>
                 <li><strong>Launch:</strong> 2025</li>
                 <li><strong>Languages Supported:</strong> 18+ including English, Spanish, French, German, Chinese, Japanese</li>
@@ -279,12 +310,12 @@
             <h3>Media Contact</h3>
             <p>For press inquiries, interviews, or additional information:</p>
             <p><a href="mailto:press@murmurtone.com">press@murmurtone.com</a></p>
-            <p style="margin-top: 15px; color: #666; font-size: 0.9em;">We typically respond within 24-48 hours.</p>
+            <p style="margin-top: 15px; color: var(--slate-500); font-size: 0.9em;">We typically respond within 24-48 hours.</p>
         </div>
 
         <h2>Usage Guidelines</h2>
         <p>When writing about MurmurTone:</p>
-        <ul style="margin: 15px 0; padding-left: 25px;">
+        <ul class="usage-list">
             <li>Always capitalize "MurmurTone" as one word</li>
             <li>Do not modify, recolor, or distort the logo</li>
             <li>Maintain clear space around the logo</li>

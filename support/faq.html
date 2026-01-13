@@ -7,66 +7,84 @@
     <meta name="description" content="Frequently asked questions about MurmurTone: privacy, pricing, features, technical requirements, and troubleshooting.">
     <link rel="icon" type="image/png" href="/icon.png">
     <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #14b8a6;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --white: #ffffff;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
-        .nav-bar { background: white; padding: 15px 0; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--slate-700); }
+        .nav-bar { background: var(--white); padding: 15px 0; border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 100; }
         .nav-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #222; font-weight: 700; font-size: 1.2em; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--slate-800); font-weight: 700; font-size: 1.2em; }
         .nav-logo img { height: 32px; width: 32px; }
         .nav-links { display: flex; gap: 30px; align-items: center; }
-        .nav-links a { text-decoration: none; color: #666; font-weight: 500; transition: color 0.2s; }
-        .nav-links a:hover { color: #667eea; }
-        .nav-cta { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
-        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 20px; text-align: center; }
+        .nav-links a { text-decoration: none; color: var(--slate-600); font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-cta { background: var(--primary); color: var(--white) !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-cta:hover { background: var(--primary-dark); }
+        .hero { background: var(--slate-800); color: var(--white); padding: 60px 20px; text-align: center; }
         .hero h1 { font-size: 2.5em; margin-bottom: 15px; }
-        .hero p { font-size: 1.2em; opacity: 0.95; max-width: 600px; margin: 0 auto; }
+        .hero p { font-size: 1.2em; opacity: 0.9; max-width: 600px; margin: 0 auto; color: var(--slate-300); }
         .faq-container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
         .faq-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px; justify-content: center; }
-        .faq-nav a { padding: 10px 20px; background: #f5f5f5; border-radius: 6px; text-decoration: none; color: #666; font-weight: 500; transition: all 0.2s; }
-        .faq-nav a:hover { background: #667eea; color: white; }
+        .faq-nav a { padding: 10px 20px; background: var(--slate-100); border-radius: 6px; text-decoration: none; color: var(--slate-600); font-weight: 500; transition: all 0.2s; }
+        .faq-nav a:hover { background: var(--primary); color: var(--white); }
         .faq-section { margin-bottom: 50px; }
-        .faq-section h2 { font-size: 1.5em; color: #222; margin-bottom: 25px; padding-bottom: 10px; border-bottom: 2px solid #667eea; display: inline-block; }
-        .faq-item { background: white; border: 1px solid #eee; border-radius: 8px; margin-bottom: 15px; overflow: hidden; }
-        .faq-question { padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #333; transition: background 0.2s; }
-        .faq-question:hover { background: #f9f9f9; }
-        .faq-question::after { content: '+'; font-size: 1.5em; color: #667eea; font-weight: 300; transition: transform 0.3s; }
+        .faq-section h2 { font-size: 1.5em; color: var(--slate-800); margin-bottom: 25px; padding-bottom: 10px; border-bottom: 2px solid var(--primary); display: inline-block; }
+        .faq-item { background: var(--white); border: 1px solid var(--slate-200); border-radius: 8px; margin-bottom: 15px; overflow: hidden; }
+        .faq-question { padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--slate-700); transition: background 0.2s; }
+        .faq-question:hover { background: var(--slate-50); }
+        .faq-question::after { content: '+'; font-size: 1.5em; color: var(--primary); font-weight: 300; transition: transform 0.3s; }
         .faq-item.active .faq-question::after { transform: rotate(45deg); }
         .faq-answer { padding: 0 20px; max-height: 0; overflow: hidden; transition: all 0.3s ease; }
         .faq-item.active .faq-answer { padding: 0 20px 20px; max-height: 500px; }
-        .faq-answer p { color: #555; margin-bottom: 10px; }
+        .faq-answer p { color: var(--slate-600); margin-bottom: 10px; }
         .faq-answer ul { margin: 10px 0; padding-left: 20px; }
-        .faq-answer li { color: #555; margin-bottom: 5px; }
-        .faq-answer code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-        .faq-answer a { color: #667eea; }
-        .cta-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 20px; text-align: center; margin-top: 40px; }
-        .cta-section h2 { color: white; font-size: 2em; margin-bottom: 15px; }
-        .cta-section p { color: rgba(255,255,255,0.9); font-size: 1.1em; margin-bottom: 25px; }
+        .faq-answer li { color: var(--slate-600); margin-bottom: 5px; }
+        .faq-answer code { background: rgba(13, 148, 136, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: var(--primary); }
+        .faq-answer a { color: var(--primary); }
+        .cta-section { background: var(--slate-800); padding: 60px 20px; text-align: center; margin-top: 40px; }
+        .cta-section h2 { color: var(--white); font-size: 2em; margin-bottom: 15px; }
+        .cta-section p { color: var(--slate-300); font-size: 1.1em; margin-bottom: 25px; }
         .cta-buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
         .btn { padding: 14px 30px; border-radius: 6px; font-weight: 600; text-decoration: none; transition: all 0.2s; }
-        .btn-white { background: white; color: #667eea; }
-        .btn-white:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .btn-outline { background: transparent; color: white; border: 2px solid white; }
-        .btn-outline:hover { background: white; color: #667eea; }
-        .footer { background: #f9f9f9; padding: 40px 20px; border-top: 1px solid #eee; }
+        .btn-primary { background: var(--primary); color: var(--white); }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
+        .btn-outline { background: transparent; color: var(--white); border: 2px solid var(--slate-400); }
+        .btn-outline:hover { background: var(--white); color: var(--slate-800); border-color: var(--white); }
+        .footer { background: var(--slate-800); padding: 40px 20px; }
         .footer-content { max-width: 900px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .footer-content p { color: var(--slate-400); }
         .footer-links { display: flex; gap: 30px; }
-        .footer-links a { color: #666; text-decoration: none; }
-        .footer-links a:hover { color: #667eea; }
+        .footer-links a { color: var(--slate-400); text-decoration: none; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--primary-light); }
         /* Hamburger Menu */
         .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
-        .nav-hamburger span { width: 25px; height: 3px; background: #333; border-radius: 2px; transition: all 0.3s; }
+        .nav-hamburger span { width: 25px; height: 3px; background: var(--slate-700); border-radius: 2px; transition: all 0.3s; }
         .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
         .nav-hamburger.active span:nth-child(2) { opacity: 0; }
         .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
         /* Mobile Menu */
-        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
+        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: var(--white); padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
         .mobile-menu.active { display: block; }
-        .mobile-menu a { display: block; padding: 12px 0; color: #333; text-decoration: none; font-weight: 500; border-bottom: 1px solid #eee; }
+        .mobile-menu a { display: block; padding: 12px 0; color: var(--slate-700); text-decoration: none; font-weight: 500; border-bottom: 1px solid var(--slate-200); }
         .mobile-menu a:last-child { border-bottom: none; }
-        .mobile-menu a:hover { color: #667eea; }
-        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: white; }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: var(--white); }
         /* Focus States */
-        a:focus-visible, button:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+        a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         @media (max-width: 768px) { .nav-hamburger { display: flex; } .nav-links { display: none; } .hero h1 { font-size: 2em; } .faq-nav { gap: 8px; } .faq-nav a { padding: 8px 15px; font-size: 0.9em; } .footer-content { flex-direction: column; text-align: center; } .footer-links { flex-wrap: wrap; justify-content: center; } }
     </style>
 </head>
@@ -171,7 +189,7 @@
                     <p>Installation is simple:</p>
                     <ul>
                         <li>Download the installer from <a href="/install.html">murmurtone.com/install</a></li>
-                        <li>Run the installer (click "More info" → "Run anyway" if SmartScreen appears)</li>
+                        <li>Run the installer (click "More info" then "Run anyway" if SmartScreen appears)</li>
                         <li>MurmurTone will appear in your system tray</li>
                         <li>The first transcription will download the speech model</li>
                     </ul>
@@ -234,7 +252,7 @@
                         <li>Remove filler words (um, uh, like)</li>
                         <li>Improve sentence structure</li>
                     </ul>
-                    <p>This feature requires <a href="https://ollama.ai" target="_blank">Ollama</a> installed separately, but runs 100% locally - no cloud AI involved.</p>
+                    <p>This feature requires <a href="https://ollama.ai" target="_blank" rel="noopener">Ollama</a> installed separately, but runs 100% locally - no cloud AI involved.</p>
                 </div>
             </div>
 
@@ -267,7 +285,7 @@
             <div class="faq-item">
                 <div class="faq-question">Can I transcribe audio/video files?</div>
                 <div class="faq-answer">
-                    <p>Yes! MurmurTone can transcribe audio and video files (MP3, WAV, M4A, MP4, etc.). Right-click the system tray icon → "Transcribe File" and select your media file. Transcription happens locally and is saved to a text file.</p>
+                    <p>Yes! MurmurTone can transcribe audio and video files (MP3, WAV, M4A, MP4, etc.). Right-click the system tray icon then select "Transcribe File" and select your media file. Transcription happens locally and is saved to a text file.</p>
                 </div>
             </div>
 
@@ -398,7 +416,7 @@
                 <div class="faq-question">Why does SmartScreen warn about the installer?</div>
                 <div class="faq-answer">
                     <p>Windows SmartScreen may show a warning because MurmurTone is a new application that hasn't been widely distributed yet. This is normal for any new software.</p>
-                    <p>To proceed: Click "More info" → "Run anyway"</p>
+                    <p>To proceed: Click "More info" then "Run anyway"</p>
                     <p>We're working on code signing to eliminate this warning in future releases.</p>
                 </div>
             </div>
@@ -409,7 +427,7 @@
         <h2>Still Have Questions?</h2>
         <p>Can't find what you're looking for? We're here to help.</p>
         <div class="cta-buttons">
-            <a href="/support/contact.html" class="btn btn-white">Contact Support</a>
+            <a href="/support/contact.html" class="btn btn-primary">Contact Support</a>
             <a href="/docs/" class="btn btn-outline">Browse Documentation</a>
         </div>
     </section>

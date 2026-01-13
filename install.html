@@ -4,206 +4,117 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Download MurmurTone - Free 14-Day Trial</title>
+    <meta name="description" content="Download MurmurTone - privacy-first voice-to-text for Windows. Free 14-day trial, no credit card required. 100% offline processing.">
+    <link rel="icon" type="image/png" href="/icon.png">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #14b8a6;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --white: #ffffff;
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: #f9f9f9;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px 0;
-            text-align: center;
-        }
-
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        header p {
-            font-size: 1.1em;
-            opacity: 0.95;
-        }
-
-        .download-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            padding: 40px;
-            margin: 40px 0;
-        }
-
-        .download-button {
-            display: block;
-            width: 100%;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 1.3em;
-            text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
-            margin-bottom: 20px;
-        }
-
-        .download-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .version-info {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-        }
-
-        .price-info {
-            background: #f5f5f5;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 30px 0;
-            text-align: center;
-        }
-
-        .price-info h3 {
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-
-        .price-info p {
-            color: #666;
-        }
-
-        .requirements {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            margin: 20px 0;
-        }
-
-        .requirements h2 {
-            color: #222;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-
-        .requirements ul {
-            list-style-position: inside;
-            color: #666;
-        }
-
-        .requirements li {
-            margin: 10px 0;
-            padding-left: 10px;
-        }
-
-        .installation-steps {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            margin: 20px 0;
-        }
-
-        .installation-steps h2 {
-            color: #222;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-
-        .step {
-            background: #f9f9f9;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
-        }
-
-        .step-number {
-            color: #667eea;
-            font-weight: 700;
-            font-size: 1.2em;
-        }
-
-        .features-list {
-            background: #f5f5f5;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .features-list ul {
-            list-style: none;
-        }
-
-        .features-list li {
-            margin: 10px 0;
-            padding-left: 25px;
-            position: relative;
-        }
-
-        .features-list li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: #667eea;
-            font-weight: bold;
-        }
-
-        .support-section {
-            text-align: center;
-            padding: 30px 0;
-            color: #666;
-        }
-
-        .support-section a {
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        .support-section a:hover {
-            text-decoration: underline;
-        }
-
-        footer {
-            background: #333;
-            color: white;
-            text-align: center;
-            padding: 30px 0;
-            margin-top: 40px;
-        }
-
-        footer a {
-            color: #667eea;
-            text-decoration: none;
-            margin: 0 15px;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--slate-700); background: var(--slate-50); }
+        .nav-bar { background: var(--white); padding: 15px 0; border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--slate-800); font-weight: 700; font-size: 1.2em; }
+        .nav-logo img { height: 32px; width: 32px; }
+        .nav-links { display: flex; gap: 30px; align-items: center; }
+        .nav-links a { text-decoration: none; color: var(--slate-600); font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-cta { background: var(--primary); color: var(--white) !important; padding: 8px 20px; border-radius: 6px; font-weight: 600; }
+        .nav-cta:hover { background: var(--primary-dark); }
+        .container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+        header { background: var(--slate-800); color: var(--white); padding: 50px 0; text-align: center; }
+        header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        header p { font-size: 1.2em; color: var(--slate-300); }
+        .download-card { background: var(--white); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); padding: 40px; margin: 40px 0; }
+        .download-button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 20px; background: var(--primary); color: var(--white); text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1.3em; text-align: center; transition: all 0.3s; margin-bottom: 20px; }
+        .download-button:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(13, 148, 136, 0.3); }
+        .download-button svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .version-info { text-align: center; color: var(--slate-500); margin-bottom: 30px; }
+        .version-info a { color: var(--primary); text-decoration: none; }
+        .version-info a:hover { text-decoration: underline; }
+        .price-info { background: var(--slate-100); border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center; }
+        .price-info h3 { color: var(--primary); margin-bottom: 10px; font-size: 1.2em; }
+        .price-info p { color: var(--slate-600); margin: 5px 0; }
+        .requirements { background: var(--white); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); padding: 30px; margin: 20px 0; }
+        .requirements h2 { color: var(--slate-800); margin-bottom: 20px; font-size: 1.5em; }
+        .requirements ul { list-style-position: inside; color: var(--slate-600); }
+        .requirements li { margin: 10px 0; padding-left: 10px; }
+        .installation-steps { background: var(--white); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); padding: 30px; margin: 20px 0; }
+        .installation-steps h2 { color: var(--slate-800); margin-bottom: 20px; font-size: 1.5em; }
+        .step { background: var(--slate-50); border-left: 4px solid var(--primary); padding: 15px; margin: 15px 0; border-radius: 0 8px 8px 0; }
+        .step-number { color: var(--primary); font-weight: 700; font-size: 1.1em; }
+        .features-list { background: var(--slate-100); border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .features-list h3 { margin-bottom: 15px; color: var(--slate-800); }
+        .features-list ul { list-style: none; }
+        .features-list li { margin: 10px 0; padding-left: 28px; position: relative; color: var(--slate-600); }
+        .features-list li:before { content: ""; position: absolute; left: 0; top: 6px; width: 16px; height: 16px; background: var(--primary); border-radius: 50%; }
+        .features-list li:after { content: ""; position: absolute; left: 4px; top: 10px; width: 8px; height: 4px; border-left: 2px solid var(--white); border-bottom: 2px solid var(--white); transform: rotate(-45deg); }
+        .support-section { text-align: center; padding: 30px 0; color: var(--slate-600); }
+        .support-section h2 { margin-bottom: 20px; color: var(--slate-800); }
+        .support-section a { color: var(--primary); text-decoration: none; font-weight: 500; }
+        .support-section a:hover { text-decoration: underline; }
+        footer { background: var(--slate-800); color: var(--white); text-align: center; padding: 30px 0; margin-top: 40px; }
+        footer p { color: var(--slate-400); }
+        footer a { color: var(--primary-light); text-decoration: none; margin: 0 15px; }
+        footer a:hover { text-decoration: underline; }
+        /* Hamburger Menu */
+        .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
+        .nav-hamburger span { width: 25px; height: 3px; background: var(--slate-700); border-radius: 2px; transition: all 0.3s; }
+        .nav-hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(6px, 6px); }
+        .nav-hamburger.active span:nth-child(2) { opacity: 0; }
+        .nav-hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(6px, -6px); }
+        /* Mobile Menu */
+        .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: var(--white); padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 99; }
+        .mobile-menu.active { display: block; }
+        .mobile-menu a { display: block; padding: 12px 0; color: var(--slate-700); text-decoration: none; font-weight: 500; border-bottom: 1px solid var(--slate-200); }
+        .mobile-menu a:last-child { border-bottom: none; }
+        .mobile-menu a:hover { color: var(--primary); }
+        .mobile-menu .nav-cta { display: inline-block; margin-top: 15px; text-align: center; color: var(--white); }
+        /* Focus States */
+        a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        @media (max-width: 768px) { .nav-hamburger { display: flex; } .nav-links { display: none; } header h1 { font-size: 2em; } }
     </style>
 </head>
 <body>
+    <nav class="nav-bar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo"><img src="/icon.png" alt="MurmurTone">MurmurTone</a>
+            <div class="nav-links">
+                <a href="/#features">Features</a>
+                <a href="/pricing.html">Pricing</a>
+                <a href="/docs/">Docs</a>
+                <a href="/support/faq.html">FAQ</a>
+                <a href="/install.html" class="nav-cta">Download</a>
+            </div>
+            <div class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/#features">Features</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/docs/">Docs</a>
+        <a href="/support/faq.html">FAQ</a>
+        <a href="/install.html" class="nav-cta">Download</a>
+    </div>
+
     <header>
         <div class="container">
             <h1>Download MurmurTone</h1>
@@ -214,24 +125,25 @@
     <div class="container">
         <div class="download-card">
             <a href="https://github.com/tuckerandrew21/murmurtone/releases/latest/download/MurmurTone-Setup.exe" class="download-button">
-                ⬇️ Download MurmurTone for Windows
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download MurmurTone for Windows
             </a>
 
             <div class="version-info">
-                <p><strong>Version 1.0.0</strong> • Windows 10/11 • ~200 MB</p>
-                <p style="margin-top: 10px; font-size: 0.95em;">
-                    <a href="https://github.com/tuckerandrew21/murmurtone/releases" style="color: #667eea; text-decoration: none;">View all releases →</a>
+                <p><strong>Version 1.0.0</strong> &bull; Windows 10/11 &bull; ~200 MB</p>
+                <p style="margin-top: 10px;">
+                    <a href="https://github.com/tuckerandrew21/murmurtone/releases">View all releases</a>
                 </p>
             </div>
 
             <div class="price-info">
-                <h3>🎉 Early Access Pricing: $49/year</h3>
+                <h3>Early Access Pricing: $49/year</h3>
                 <p>Try free for 14 days. After trial, continue with Pro license for $49/year.</p>
-                <p style="margin-top: 10px; font-weight: 600;">Lock in this rate forever — price may increase for new users.</p>
+                <p style="font-weight: 600; margin-top: 10px;">Lock in this rate forever - price may increase for new users.</p>
             </div>
 
             <div class="features-list">
-                <h3 style="margin-bottom: 15px; color: #222;">What's Included:</h3>
+                <h3>What's Included:</h3>
                 <ul>
                     <li>Unlimited voice transcription with push-to-talk hotkey</li>
                     <li>AI text cleanup with local Ollama integration (grammar & formality)</li>
@@ -239,7 +151,7 @@
                     <li>Audio file transcription (MP3, WAV, M4A)</li>
                     <li>Custom vocabulary for technical terms</li>
                     <li>4 accuracy modes (tiny, base, small, medium)</li>
-                    <li>100% offline processing — your voice never leaves your machine</li>
+                    <li>100% offline processing - your voice never leaves your machine</li>
                 </ul>
             </div>
         </div>
@@ -267,7 +179,7 @@
 
             <div class="step">
                 <span class="step-number">Step 2:</span>
-                <strong>Run MurmurTone-Setup.exe</strong>. Windows may show a SmartScreen warning (normal for new apps). Click "More info" → "Run anyway".
+                <strong>Run MurmurTone-Setup.exe</strong>. Windows may show a SmartScreen warning (normal for new apps). Click "More info" then "Run anyway".
             </div>
 
             <div class="step">
@@ -282,7 +194,7 @@
 
             <div class="step">
                 <span class="step-number">Step 5:</span>
-                <strong>Set up your hotkey</strong>. Right-click the tray icon → Settings. Configure your preferred hotkey (default: Ctrl+Shift+Space).
+                <strong>Set up your hotkey</strong>. Right-click the tray icon then select Settings. Configure your preferred hotkey (default: Ctrl+Shift+Space).
             </div>
 
             <div class="step">
@@ -293,22 +205,22 @@
 
         <div class="requirements">
             <h2>After Your 14-Day Trial</h2>
-            <p style="margin-bottom: 15px; color: #666;">
+            <p style="margin-bottom: 15px; color: var(--slate-600);">
                 Your trial includes <strong>full access to all features</strong>. No credit card required to start.
             </p>
-            <p style="margin-bottom: 15px; color: #666;">
+            <p style="margin-bottom: 15px; color: var(--slate-600);">
                 After 14 days, you'll be prompted to purchase a Pro license ($49/year) to continue using MurmurTone.
             </p>
-            <p style="color: #666;">
+            <p style="color: var(--slate-600);">
                 <strong>Early Access Bonus:</strong> Lock in the $49/year rate forever. Pricing may increase for new users after launch period.
             </p>
         </div>
 
         <div class="support-section">
-            <h2 style="margin-bottom: 20px; color: #222;">Need Help?</h2>
+            <h2>Need Help?</h2>
             <p>
-                <a href="https://github.com/tuckerandrew21/murmurtone/issues">Report an Issue</a> •
-                <a href="/">Back to Home</a> •
+                <a href="https://github.com/tuckerandrew21/murmurtone/issues" target="_blank" rel="noopener">Report an Issue</a> &bull;
+                <a href="/">Back to Home</a> &bull;
                 <a href="mailto:support@murmurtone.com">Contact Support</a>
             </p>
         </div>
@@ -316,13 +228,30 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 MurmurTone. Privacy-focused speech recognition.</p>
+            <p>&copy; 2025 MurmurTone. Privacy-focused speech recognition.</p>
             <p style="margin-top: 10px;">
-                <a href="https://github.com/tuckerandrew21/murmurtone">GitHub</a> •
-                <a href="/">Home</a> •
-                <a href="/license">License (MIT)</a>
+                <a href="https://github.com/tuckerandrew21/murmurtone" target="_blank" rel="noopener">GitHub</a>
+                <a href="/">Home</a>
+                <a href="/legal/privacy.html">Privacy</a>
+                <a href="/legal/terms.html">Terms</a>
             </p>
         </div>
     </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const hamburger = document.querySelector('.nav-hamburger');
+            menu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        document.querySelectorAll('.mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobileMenu').classList.remove('active');
+                document.querySelector('.nav-hamburger').classList.remove('active');
+            });
+        });
+    </script>
 </body>
 </html>
