@@ -18,6 +18,7 @@ datas = [
     ('icon.png', '.'),
     ('LICENSE', '.'),
     ('THIRD_PARTY_LICENSES.md', '.'),
+    ('assets/logo/murmurtone-logo-icon.ico', 'assets/logo'),
 ]
 
 # Check if bundled model exists and include it

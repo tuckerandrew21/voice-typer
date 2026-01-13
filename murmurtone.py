@@ -364,8 +364,16 @@ def play_sound(sound_data, sound_type=None):
         ).start()
 
 
-def generate_status_icon(color, logo_path="assets/logo/murmurtone-icon-white.png"):
-    """Generate a circular icon with logo centered."""
+def generate_status_icon(color, logo_path=None):
+    """Generate a circular icon with programmatic waveform overlay.
+
+    Args:
+        color: Hex color for circle background (e.g., '#0d9488' for teal)
+        logo_path: DEPRECATED - kept for backward compatibility, not used
+
+    Returns:
+        PIL Image (64x64 RGBA) with transparent corners
+    """
     size = 64
 
     # Create circular background with transparency
@@ -375,22 +383,26 @@ def generate_status_icon(color, logo_path="assets/logo/murmurtone-icon-white.png
     # Draw filled circle
     draw.ellipse([0, 0, size-1, size-1], fill=color)
 
-    # Load and resize logo to 40x40 (leaves 12px padding)
-    try:
-        logo = Image.open(logo_path)
+    # Draw waveform bars programmatically for clarity at small size
+    # Original SVG has 5 bars at 24px wide, but that scales to 1-2px at 40x40 (invisible)
+    # Instead, draw bars at 4px width for visibility
 
-        # Resize logo with antialiasing
-        logo = logo.resize((40, 40), Image.Resampling.LANCZOS)
+    bar_width = 4
+    bar_spacing = 2
+    bar_heights = [8, 16, 24, 16, 8]  # Short, medium, tall, medium, short (brand rhythm)
 
-        # Convert to RGBA if needed
-        if logo.mode != 'RGBA':
-            logo = logo.convert('RGBA')
+    # Calculate starting x position to center the waveform group
+    total_width = (bar_width * len(bar_heights)) + (bar_spacing * (len(bar_heights) - 1))  # 28px
+    overlay_size = 40  # Size of logo area (64-24 padding = 40)
+    start_x_in_overlay = (overlay_size - total_width) // 2  # Center in 40x40 space
+    start_x = start_x_in_overlay + 12  # Offset for circle padding (64-40)/2 = 12
 
-        # Paste logo centered (12px offset for 64-40 = 24/2 = 12)
-        image.paste(logo, (12, 12), logo)
-    except Exception as e:
-        print(f"Could not load logo for tray icon: {e}")
-        # Fallback: just use colored circle
+    # Draw each bar, vertically centered within its height
+    for i, height in enumerate(bar_heights):
+        x = start_x + i * (bar_width + bar_spacing)
+        y = (overlay_size - height) // 2 + 12  # Center vertically in 40x40 space, +12 for padding
+        # Draw filled white rectangle
+        draw.rectangle([x, y, x + bar_width - 1, y + height - 1], fill='white')
 
     return image
 
@@ -1409,21 +1421,31 @@ def open_settings_window():
 
     import subprocess
     app_dir = os.path.dirname(os.path.abspath(__file__))
-    settings_script = os.path.join(app_dir, "settings_gui.py")
 
-    # Verify settings script exists
-    if not os.path.exists(settings_script):
-        log.error(f"Settings GUI not found at: {settings_script}")
-        return
+    # Check if we're running from a PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        # Running from PyInstaller .exe - launch same executable with --settings
+        executable = sys.executable
+        command = [executable, "--settings"]
+        log.info(f"Running from PyInstaller bundle: {executable}")
+    else:
+        # Running from source - launch settings_gui.py directly
+        settings_script = os.path.join(app_dir, "settings_gui.py")
+
+        # Verify settings script exists
+        if not os.path.exists(settings_script):
+            log.error(f"Settings GUI not found at: {settings_script}")
+            return
+
+        command = [sys.executable, settings_script]
+        log.info(f"Running from source, launching: {settings_script}")
 
     try:
-        # Capture stderr to log any errors from settings_gui.py
-        log.info(f"Attempting to launch settings GUI: {settings_script}")
-        log.info(f"Python executable: {sys.executable}")
+        log.info(f"Launching settings with command: {command}")
         log.info(f"Working directory: {app_dir}")
 
         settings_process = subprocess.Popen(
-            [sys.executable, settings_script],
+            command,
             cwd=app_dir,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -1630,7 +1652,11 @@ def main():
 
     # Open settings on startup if requested
     if args.settings:
-        threading.Thread(target=open_settings_window, daemon=True).start()
+        # When launched with --settings, show GUI directly (don't spawn subprocess)
+        import settings_gui
+        gui = settings_gui.SettingsWindow(app_config, on_save_callback=on_settings_saved)
+        gui.show()
+        return  # Exit after settings window closes
 
     # Create and run tray icon (blocks)
     tray_icon = create_tray_icon()

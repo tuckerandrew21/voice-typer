@@ -19,6 +19,7 @@ from murmurtone import (
     generate_chime_sound,
     generate_double_beep_sound,
     generate_error_buzz_sound,
+    generate_status_icon,
 )
 
 
@@ -189,3 +190,48 @@ class TestSoundGeneration:
         with wave.open(click_buf, 'rb') as w1, wave.open(chime_buf, 'rb') as w2:
             # Chime should be longer than click
             assert w2.getnframes() > w1.getnframes()
+
+
+class TestIconGeneration:
+    """Tests for status icon generation."""
+
+    def test_generate_status_icon_dimensions(self):
+        """Icon should have correct dimensions."""
+        icon = generate_status_icon('#0d9488')
+        assert icon.size == (64, 64)
+        assert icon.mode == 'RGBA'
+
+    def test_generate_status_icon_different_colors(self):
+        """Should generate icons with different colors."""
+        icon_teal = generate_status_icon('#0d9488')
+        icon_red = generate_status_icon('#ef4444')
+        # Both should be valid RGBA images
+        assert icon_teal.mode == 'RGBA'
+        assert icon_red.mode == 'RGBA'
+        # Images should be different (different circle colors)
+        assert icon_teal.tobytes() != icon_red.tobytes()
+
+    def test_generate_status_icon_transparency(self):
+        """Corners should be transparent."""
+        icon = generate_status_icon('#0d9488')
+        # Check corner pixels are transparent (alpha channel = 0)
+        assert icon.getpixel((0, 0))[3] == 0  # Top-left
+        assert icon.getpixel((63, 0))[3] == 0  # Top-right
+        assert icon.getpixel((0, 63))[3] == 0  # Bottom-left
+        assert icon.getpixel((63, 63))[3] == 0  # Bottom-right
+
+    def test_generate_status_icon_has_white_bars(self):
+        """Icon should contain white pixels from waveform bars."""
+        icon = generate_status_icon('#0d9488')
+        pixels = list(icon.getdata())
+        # Count white pixels (R=255, G=255, B=255, alpha>200)
+        white_pixels = [p for p in pixels if p[0:3] == (255, 255, 255) and p[3] > 200]
+        # Should have substantial white area from bars (at least 50 pixels)
+        assert len(white_pixels) > 50
+
+    def test_generate_status_icon_center_is_opaque(self):
+        """Center of icon should be opaque (not transparent)."""
+        icon = generate_status_icon('#0d9488')
+        # Check center pixel is opaque
+        center_pixel = icon.getpixel((32, 32))
+        assert center_pixel[3] > 200  # Alpha channel should be near 255

@@ -18,6 +18,9 @@ models/
 .mcp.json
 .restart_signal
 
+# Generated test icons
+test_icon_*.png
+
 # Local planning docs
 COMPETITIVE_ANALYSIS.md
 HANDOFF.md

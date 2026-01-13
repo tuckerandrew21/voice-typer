@@ -10,7 +10,3 @@ timeout /t 2 /nobreak >nul
 
 echo Opening settings...
 start "" "%~dp0venv\Scripts\python.exe" settings_gui.py
-
-echo Opening log file...
-timeout /t 1 /nobreak >nul
-start "" notepad.exe "%APPDATA%\MurmurTone\murmurtone.log"

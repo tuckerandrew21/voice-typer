@@ -33,6 +33,17 @@ from theme import (
 )
 
 
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Running in dev mode
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 # Configure CustomTkinter appearance
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -334,7 +345,7 @@ class SettingsWindow:
 
         # Set window icon
         try:
-            icon_path = "assets/logo/murmurtone-logo-icon.ico"
+            icon_path = resource_path("assets/logo/murmurtone-logo-icon.ico")
             self.window.iconbitmap(icon_path)
         except Exception as e:
             print(f"Could not set window icon: {e}")
