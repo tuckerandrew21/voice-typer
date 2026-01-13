@@ -47,6 +47,52 @@ def check_cuda_available():
             return False
 
 
+def test_cuda_runtime():
+    """
+    Test if CUDA runtime libraries are actually loadable.
+    Returns (success, error_message).
+
+    On Windows, the CUDA DLLs from nvidia-cublas-cu12 and nvidia-cudnn-cu12
+    are installed in site-packages but may not be loadable if dependencies
+    are missing or there are version conflicts.
+    """
+    if sys.platform != "win32":
+        return True, None  # Non-Windows doesn't have this DLL issue
+
+    import ctypes
+
+    # Find site-packages
+    site_packages = None
+    for path in sys.path:
+        if "site-packages" in path and os.path.exists(path):
+            site_packages = path
+            break
+
+    if not site_packages:
+        return False, "Could not find site-packages directory"
+
+    # Required DLLs for CUDA inference
+    required_dlls = [
+        ("nvidia", "cublas", "bin", "cublas64_12.dll"),
+        ("nvidia", "cudnn", "bin", "cudnn64_9.dll"),
+    ]
+
+    errors = []
+    for parts in required_dlls:
+        dll_path = os.path.join(site_packages, *parts)
+        if not os.path.exists(dll_path):
+            errors.append(f"Missing: {parts[-1]}")
+        else:
+            try:
+                ctypes.WinDLL(dll_path)
+            except OSError as e:
+                errors.append(f"Failed to load {parts[-1]}")
+
+    if errors:
+        return False, ", ".join(errors)
+    return True, None
+
+
 # Set to True to test the "GPU not available" UI state
 _TEST_GPU_UNAVAILABLE = False
 
@@ -82,7 +128,12 @@ def get_cuda_status():
     if not cuda_supported:
         return (False, "GPU libraries not installed", None)
 
-    # CUDA is supported, try to get GPU name via torch
+    # CUDA compile support exists - now verify runtime DLLs actually load
+    runtime_ok, runtime_error = test_cuda_runtime()
+    if not runtime_ok:
+        return (False, "GPU libraries not working", runtime_error)
+
+    # Runtime DLLs load - try to get GPU name via torch
     try:
         import torch
         if torch.cuda.is_available():
@@ -1402,8 +1453,15 @@ class SettingsWindow:
 
         def run_install():
             try:
+                # Use venv pip explicitly to avoid system Python issues
+                venv_pip = os.path.join(app_dir, "venv", "Scripts", "pip.exe")
+                if os.path.exists(venv_pip):
+                    cmd = [venv_pip, "install", "-r", req_file]
+                else:
+                    cmd = [sys.executable, "-m", "pip", "install", "-r", req_file]
+
                 result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "-r", req_file],
+                    cmd,
                     capture_output=True,
                     text=True,
                     cwd=app_dir
@@ -1430,10 +1488,24 @@ class SettingsWindow:
             self._install_dialog = None
 
         if success:
-            # Custom dialog with Restart Now / Later buttons
-            self._show_restart_dialog()
-            # Refresh status (may still show unavailable until restart)
-            self.refresh_gpu_status()
+            # Verify the libraries actually work (not just that pip succeeded)
+            runtime_ok, runtime_error = test_cuda_runtime()
+            if runtime_ok:
+                # Libraries load successfully
+                self._show_restart_dialog()
+                self.refresh_gpu_status()
+            else:
+                # pip succeeded but libraries don't load
+                messagebox.showwarning(
+                    "Installation Incomplete",
+                    f"Packages were installed but GPU test failed:\n\n"
+                    f"{runtime_error}\n\n"
+                    "A restart may be required for changes to take effect.\n\n"
+                    "If the problem persists, you may need to install "
+                    "NVIDIA drivers or CUDA toolkit separately.",
+                    parent=self.window
+                )
+                self.refresh_gpu_status()
         else:
             # Show error with manual instructions
             msg = ("Installation failed.\n\n"

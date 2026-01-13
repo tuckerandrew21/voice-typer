@@ -385,19 +385,53 @@ def update_tray_icon(recording=False):
 
 
 def check_cuda_available():
-    """Check if CUDA is available for GPU acceleration."""
+    """Check if CUDA is available for GPU acceleration.
+
+    This checks both compile-time support AND runtime library availability.
+    On Windows, the CUDA DLLs from nvidia-cublas-cu12 and nvidia-cudnn-cu12
+    must be loadable for GPU inference to work.
+    """
+    # First check compile-time support
     try:
-        import torch
-        return torch.cuda.is_available()
-    except ImportError:
-        # torch not installed, try ctranslate2 directly
-        try:
-            import ctranslate2
-            # ctranslate2 API requires device argument
-            cuda_types = ctranslate2.get_supported_compute_types("cuda")
-            return len(cuda_types) > 0
-        except (ImportError, Exception):
+        import ctranslate2
+        cuda_types = ctranslate2.get_supported_compute_types("cuda")
+        if len(cuda_types) == 0:
             return False
+    except (ImportError, Exception):
+        return False
+
+    # On Windows, verify runtime DLLs actually load
+    if sys.platform == "win32":
+        import ctypes
+
+        # Find site-packages
+        site_packages = None
+        for path in sys.path:
+            if "site-packages" in path and os.path.exists(path):
+                site_packages = path
+                break
+
+        if not site_packages:
+            return False
+
+        # Required DLLs for CUDA inference
+        required_dlls = [
+            ("nvidia", "cublas", "bin", "cublas64_12.dll"),
+            ("nvidia", "cudnn", "bin", "cudnn64_9.dll"),
+        ]
+
+        for parts in required_dlls:
+            dll_path = os.path.join(site_packages, *parts)
+            if not os.path.exists(dll_path):
+                log.debug(f"CUDA DLL not found: {dll_path}")
+                return False
+            try:
+                ctypes.WinDLL(dll_path)
+            except OSError as e:
+                log.debug(f"Failed to load CUDA DLL {dll_path}: {e}")
+                return False
+
+    return True
 
 
 def get_device_and_compute_type():
@@ -453,10 +487,27 @@ def load_model(model_size=None):
 
     # Use bundled model if available, otherwise download from HuggingFace
     model_path = get_model_path(model_size)
-    model = WhisperModel(model_path, device=device, compute_type=compute_type)
+
+    # Try to load model, falling back to CPU if GPU fails
+    try:
+        model = WhisperModel(model_path, device=device, compute_type=compute_type)
+    except RuntimeError as e:
+        error_str = str(e).lower()
+        if device == "cuda" and ("cublas" in error_str or "cuda" in error_str or "cudnn" in error_str):
+            log.error(f"GPU initialization failed: {e}")
+            log.warning("Falling back to CPU mode...")
+            device = "cpu"
+            compute_type = "int8"
+            # Also save this to config so we don't keep trying GPU
+            app_config["processing_mode"] = "cpu"
+            config.save_config(app_config)
+            model = WhisperModel(model_path, device=device, compute_type=compute_type)
+        else:
+            raise
+
     model_ready = True
     model_loading = False
-    log.info("Model loaded! Ready.")
+    log.info(f"Model loaded on {device}! Ready.")
 
     if tray_icon:
         hotkey_str = config.hotkey_to_string(app_config["hotkey"])
@@ -571,6 +622,38 @@ def start_recording():
     stream.start()
 
 
+def transcribe_with_fallback(audio, transcribe_params):
+    """Transcribe audio, falling back to CPU if GPU fails.
+
+    If a CUDA runtime error occurs (missing DLLs, etc.), this function
+    will automatically switch to CPU mode, save the config, reload the
+    model, and retry the transcription.
+    """
+    global model
+
+    try:
+        segments, _ = model.transcribe(audio, **transcribe_params)
+        return "".join(segment.text for segment in segments).strip()
+    except RuntimeError as e:
+        error_str = str(e).lower()
+        if "cublas" in error_str or "cuda" in error_str or "cudnn" in error_str:
+            log.error(f"GPU error during transcription: {e}")
+            log.warning("GPU failed - switching to CPU mode permanently")
+
+            # Switch to CPU mode and save config
+            app_config["processing_mode"] = "cpu"
+            config.save_config(app_config)
+
+            # Reload model on CPU
+            load_model()
+
+            # Retry transcription
+            segments, _ = model.transcribe(audio, **transcribe_params)
+            return "".join(segment.text for segment in segments).strip()
+        else:
+            raise
+
+
 def stop_recording():
     global is_recording, stream, audio_data, silence_start_time
     if not is_recording:
@@ -625,8 +708,8 @@ def stop_recording():
     if initial_prompt:
         transcribe_params["initial_prompt"] = initial_prompt
 
-    segments, _ = model.transcribe(audio, **transcribe_params)
-    raw_text = "".join(segment.text for segment in segments).strip()
+    # Use fallback wrapper that handles GPU failures gracefully
+    raw_text = transcribe_with_fallback(audio, transcribe_params)
 
     # Process text through the pipeline (dictionary, fillers, commands)
     text, should_scratch, scratch_length, actions = text_processor.process_text(
