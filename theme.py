@@ -163,6 +163,34 @@ def get_dropdown_style():
     }
 
 
+def make_combobox_clickable(combobox):
+    """Make the entire CTkComboBox clickable, not just the arrow button.
+
+    By default, readonly CTkComboBox only responds to clicks on the dropdown
+    arrow. This binds click events to the entry portion to open the dropdown.
+
+    Args:
+        combobox: A CTkComboBox widget
+
+    Returns:
+        The combobox (for chaining)
+    """
+    def open_dropdown(event):
+        # Simulate clicking the dropdown button
+        combobox._open_dropdown_menu()
+
+    # Bind click to the internal entry widget
+    if hasattr(combobox, '_entry'):
+        combobox._entry.bind("<Button-1>", open_dropdown)
+        combobox._entry.configure(cursor="hand2")
+
+    # Set cursor on canvas (background) widget too
+    if hasattr(combobox, '_canvas'):
+        combobox._canvas.configure(cursor="hand2")
+
+    return combobox
+
+
 def get_label_style(variant="default"):
     """Style settings for labels.
 
