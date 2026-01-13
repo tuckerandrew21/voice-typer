@@ -982,6 +982,101 @@ class SettingsWindow:
         )
         feedback_switch.pack()
 
+        # Individual sound type toggles (shown/hidden based on master toggle)
+        self.sound_toggles_frame = ctk.CTkFrame(
+            feedback_card.content_frame, fg_color="transparent"
+        )
+        self.sound_toggles_frame.pack(fill="x", pady=(0, 12), padx=(20, 0))
+
+        # Processing sound toggle
+        processing_row = SettingRow(
+            self.sound_toggles_frame,
+            "Processing",
+            "Sound when transcription starts",
+        )
+        processing_row.pack(fill="x", pady=(0, 8))
+
+        self.sound_processing_var = ctk.BooleanVar(
+            value=self.config.get("sound_processing", True)
+        )
+        processing_switch = ctk.CTkSwitch(
+            processing_row.control_frame,
+            text="",
+            variable=self.sound_processing_var,
+            **get_switch_style(),
+        )
+        processing_switch.pack()
+
+        # Success sound toggle
+        success_row = SettingRow(
+            self.sound_toggles_frame,
+            "Success",
+            "Sound when transcription completes",
+        )
+        success_row.pack(fill="x", pady=(0, 8))
+
+        self.sound_success_var = ctk.BooleanVar(
+            value=self.config.get("sound_success", True)
+        )
+        success_switch = ctk.CTkSwitch(
+            success_row.control_frame,
+            text="",
+            variable=self.sound_success_var,
+            **get_switch_style(),
+        )
+        success_switch.pack()
+
+        # Error sound toggle
+        error_row = SettingRow(
+            self.sound_toggles_frame,
+            "Error",
+            "Sound when transcription fails",
+        )
+        error_row.pack(fill="x", pady=(0, 8))
+
+        self.sound_error_var = ctk.BooleanVar(
+            value=self.config.get("sound_error", True)
+        )
+        error_switch = ctk.CTkSwitch(
+            error_row.control_frame,
+            text="",
+            variable=self.sound_error_var,
+            **get_switch_style(),
+        )
+        error_switch.pack()
+
+        # Command sound toggle
+        command_row = SettingRow(
+            self.sound_toggles_frame,
+            "Command",
+            "Sound when voice command recognized",
+        )
+        command_row.pack(fill="x", pady=(0, 8))
+
+        self.sound_command_var = ctk.BooleanVar(
+            value=self.config.get("sound_command", True)
+        )
+        command_switch = ctk.CTkSwitch(
+            command_row.control_frame,
+            text="",
+            variable=self.sound_command_var,
+            **get_switch_style(),
+        )
+        command_switch.pack()
+
+        # Show/hide sound toggles based on master toggle
+        def toggle_sound_options(*args):
+            if self.feedback_var.get():
+                self.sound_toggles_frame.pack(fill="x", pady=(0, 12), padx=(20, 0))
+            else:
+                self.sound_toggles_frame.pack_forget()
+
+        self.feedback_var.trace_add("write", toggle_sound_options)
+
+        # Set initial visibility
+        if not self.feedback_var.get():
+            self.sound_toggles_frame.pack_forget()
+
         # Volume slider
         volume_row = SettingRow(
             feedback_card.content_frame,
@@ -1757,6 +1852,10 @@ class SettingsWindow:
             "noise_gate_enabled": self.noise_gate_var.get(),
             "noise_gate_threshold_db": self.noise_threshold_var.get(),
             "audio_feedback_volume": self.volume_var.get(),
+            "sound_processing": self.sound_processing_var.get(),
+            "sound_success": self.sound_success_var.get(),
+            "sound_error": self.sound_error_var.get(),
+            "sound_command": self.sound_command_var.get(),
             "voice_commands_enabled": self.voice_commands_var.get(),
             "scratch_that_enabled": self.scratch_that_var.get(),
             "filler_removal_enabled": self.filler_var.get(),
@@ -1813,6 +1912,10 @@ class SettingsWindow:
         self.noise_threshold_var.set(defaults.get("noise_gate_threshold_db", -40))
         self.feedback_var.set(defaults["audio_feedback"])
         self.volume_var.set(defaults.get("audio_feedback_volume", 100))
+        self.sound_processing_var.set(defaults.get("sound_processing", True))
+        self.sound_success_var.set(defaults.get("sound_success", True))
+        self.sound_error_var.set(defaults.get("sound_error", True))
+        self.sound_command_var.set(defaults.get("sound_command", True))
 
         # Recognition
         self.gpu_enabled_var.set(False)
