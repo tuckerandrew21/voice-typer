@@ -98,24 +98,28 @@ def get_button_style(variant="primary"):
             "hover_color": PRIMARY_DARK,
             "text_color": "#ffffff",
             "corner_radius": 8,
+            "cursor": "hand2",
         },
         "secondary": {
             "fg_color": SLATE_700,
             "hover_color": SLATE_600,
             "text_color": SLATE_200,
             "corner_radius": 8,
+            "cursor": "hand2",
         },
         "danger": {
             "fg_color": ERROR,
             "hover_color": "#dc2626",
             "text_color": "#ffffff",
             "corner_radius": 8,
+            "cursor": "hand2",
         },
         "ghost": {
             "fg_color": "transparent",
             "hover_color": SLATE_700,
             "text_color": SLATE_200,
             "corner_radius": 8,
+            "cursor": "hand2",
         },
     }
     return styles.get(variant, styles["primary"])
@@ -140,6 +144,7 @@ def get_switch_style():
         "button_hover_color": PRIMARY_LIGHT,
         "fg_color": SLATE_600,
         "progress_color": PRIMARY,
+        "cursor": "hand2",
     }
 
 
@@ -154,6 +159,7 @@ def get_dropdown_style():
         "dropdown_hover_color": SLATE_600,
         "text_color": SLATE_200,
         "corner_radius": 6,
+        "cursor": "hand2",
     }
 
 
