@@ -48,6 +48,15 @@ def resource_path(relative_path):
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
+# Sample rate options with user-friendly descriptions
+SAMPLE_RATE_OPTIONS = {
+    8000: "8000 Hz - Phone quality",
+    16000: "16000 Hz - Speech (Recommended)",
+    22050: "22050 Hz - Standard audio",
+    44100: "44100 Hz - CD quality",
+    48000: "48000 Hz - Studio quality",
+}
+
 
 class Tooltip:
     """Modern tooltip that appears on hover."""
@@ -832,12 +841,15 @@ class SettingsWindow:
         )
         rate_row.pack(fill="x")
 
-        self.rate_var = ctk.StringVar(value=str(self.config.get("sample_rate", 16000)))
+        sample_rate = self.config.get("sample_rate", 16000)
+        self.rate_var = ctk.StringVar(
+            value=SAMPLE_RATE_OPTIONS.get(sample_rate, SAMPLE_RATE_OPTIONS[16000])
+        )
         rate_combo = ctk.CTkComboBox(
             rate_row.control_frame,
-            values=["8000", "16000", "22050", "44100", "48000"],
+            values=list(SAMPLE_RATE_OPTIONS.values()),
             variable=self.rate_var,
-            width=100,
+            width=220,
             state="readonly",
             **get_dropdown_style(),
         )
@@ -1597,8 +1609,9 @@ class SettingsWindow:
         device_idx = device_info.get("index") if device_info else None
 
         try:
-            sample_rate = int(self.rate_var.get())
-        except ValueError:
+            rate_str = self.rate_var.get()
+            sample_rate = int(rate_str.split()[0])  # Parse "16000 Hz - ..." -> 16000
+        except (ValueError, IndexError):
             sample_rate = 16000
 
         def audio_callback(indata, frames, time, status):
@@ -1722,8 +1735,10 @@ class SettingsWindow:
 
     def save(self):
         """Save settings."""
-        # Validate inputs
-        sample_rate = settings_logic.validate_sample_rate(self.rate_var.get())
+        # Validate inputs - parse numeric value from descriptive string
+        rate_str = self.rate_var.get()
+        rate_value = rate_str.split()[0]  # "16000 Hz - Speech (Recommended)" -> "16000"
+        sample_rate = settings_logic.validate_sample_rate(rate_value)
         silence_duration = settings_logic.validate_silence_duration(self.silence_var.get())
 
         # Get selected device info
@@ -1808,7 +1823,9 @@ class SettingsWindow:
         self.preview_theme_var.set(defaults.get("preview_theme", "dark"))
 
         # Audio
-        self.rate_var.set(str(defaults["sample_rate"]))
+        self.rate_var.set(
+            SAMPLE_RATE_OPTIONS.get(defaults["sample_rate"], SAMPLE_RATE_OPTIONS[16000])
+        )
         self.noise_gate_var.set(defaults.get("noise_gate_enabled", False))
         self.noise_threshold_var.set(defaults.get("noise_gate_threshold_db", -40))
         self.feedback_var.set(defaults["audio_feedback"])
