@@ -284,6 +284,33 @@ def get_device_display_name(saved_device, devices_list):
 # Processing Mode
 # =============================================================================
 
+def processing_mode_label_to_code(label):
+    """Convert processing mode display label to config code.
+
+    Args:
+        label: Human-readable label (e.g., "Auto", "GPU - Balanced")
+
+    Returns:
+        str: Processing mode code or the label if not found
+    """
+    for code, lbl in config.PROCESSING_MODE_LABELS.items():
+        if lbl == label:
+            return code
+    return label.lower()  # Fallback
+
+
+def processing_mode_code_to_label(code):
+    """Convert processing mode code to display label.
+
+    Args:
+        code: Processing mode code (e.g., "auto", "gpu-balanced")
+
+    Returns:
+        str: Human-readable label or the code if not found
+    """
+    return config.PROCESSING_MODE_LABELS.get(code, code)
+
+
 def get_processing_mode_from_ui(gpu_enabled, compute_type):
     """Convert UI settings to processing mode config.
 
