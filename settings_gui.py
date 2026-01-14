@@ -309,13 +309,14 @@ class Card(ctk.CTkFrame):
 class SettingRow(ctk.CTkFrame):
     """A single setting row with label and control."""
 
-    def __init__(self, parent, label, description=None, **kwargs):
+    def __init__(self, parent, label, description=None, help_text=None, **kwargs):
         super().__init__(parent, fg_color="transparent", **kwargs)
 
-        # Left side: label with optional help icon
+        # Left side: label and description
         self.label_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.label_frame.pack(side="left", fill="x", expand=True)
 
+        # Label row with optional help icon
         self.label_container = ctk.CTkFrame(self.label_frame, fg_color="transparent")
         self.label_container.pack(fill="x")
 
@@ -327,9 +328,20 @@ class SettingRow(ctk.CTkFrame):
         )
         self.label.pack(side="left")
 
-        if description:
-            self.help_icon = HelpIcon(self.label_container, description)
+        # "?" icon for detailed help (optional)
+        if help_text:
+            self.help_icon = HelpIcon(self.label_container, help_text)
             self.help_icon.pack(side="left", padx=(6, 0))
+
+        # Simple description below label (optional)
+        if description:
+            self.description = ctk.CTkLabel(
+                self.label_frame,
+                text=description,
+                **get_label_style("help"),
+                anchor="w",
+            )
+            self.description.pack(fill="x")
 
         # Right side: control (added by caller)
         self.control_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -691,7 +703,8 @@ class SettingsWindow:
         mode_row = SettingRow(
             recording_card.content_frame,
             "Recording Mode",
-            "Push-to-Talk: Hold key to record\nToggle: Press once to start, again to stop\nAuto-stop: Stops when you pause speaking",
+            "How recording stops",
+            help_text="Push-to-Talk: Hold key to record\nToggle: Press once to start, again to stop\nAuto-stop: Stops when you pause speaking",
         )
         mode_row.pack(fill="x", pady=(0, 12))
 
@@ -756,7 +769,8 @@ class SettingsWindow:
         paste_mode_row = SettingRow(
             output_card.content_frame,
             "Paste Method",
-            "Clipboard: Uses Ctrl+V to paste (faster for long text)\nDirect: Types characters one by one (works everywhere)",
+            "How text is inserted",
+            help_text="Clipboard: Uses Ctrl+V to paste (faster for long text)\nDirect: Types characters one by one (works everywhere)",
         )
         paste_mode_row.pack(fill="x", pady=(0, 12))
 
@@ -1194,7 +1208,8 @@ class SettingsWindow:
         model_row = SettingRow(
             model_card.content_frame,
             "Model Size",
-            "tiny.en - Fastest, basic accuracy\nbase.en - Fast, good accuracy\nsmall.en - Balanced speed/accuracy\nmedium.en - High accuracy, slower\nlarge - Best accuracy, slowest",
+            "Larger models are more accurate but slower",
+            help_text="tiny.en - Fastest, basic accuracy\nbase.en - Fast, good accuracy\nsmall.en - Balanced speed/accuracy\nmedium.en - High accuracy, slower\nlarge - Best accuracy, slowest",
         )
         model_row.pack(fill="x", pady=(0, 12))
 
@@ -1269,7 +1284,8 @@ class SettingsWindow:
         processing_row = SettingRow(
             gpu_card.content_frame,
             "Processing Mode",
-            "Auto: GPU if available, else CPU (recommended)\nCPU: Always use CPU (slower but reliable)\nGPU: Force GPU (fails if unavailable)",
+            "Auto uses GPU if available, otherwise CPU",
+            help_text="Auto: GPU if available, else CPU (recommended)\nCPU: Always use CPU (slower but reliable)\nGPU: Force GPU (fails if unavailable)",
         )
         processing_row.pack(fill="x")
 
