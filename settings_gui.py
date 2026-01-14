@@ -1814,8 +1814,237 @@ class SettingsWindow:
 
     def _open_dictionary_editor(self):
         """Open dictionary editor dialog."""
-        # TODO: Implement dictionary editor
-        messagebox.showinfo("Coming Soon", "Dictionary editor will be available soon.")
+        # Create modal dialog
+        dialog = ctk.CTkToplevel(self.window)
+        dialog.title("Custom Dictionary")
+        dialog.geometry("800x600")
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        # Center on parent window
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 800) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 600) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        # Configure dialog colors
+        dialog.configure(fg_color=SLATE_900)
+
+        # Header
+        header = ctk.CTkFrame(dialog, fg_color=SLATE_800, corner_radius=0, height=60)
+        header.pack(fill="x", padx=0, pady=0)
+        header.pack_propagate(False)
+
+        ctk.CTkLabel(
+            header,
+            text="Custom Dictionary",
+            **get_label_style("title"),
+        ).pack(side="left", padx=PAD_SPACIOUS, pady=PAD_DEFAULT)
+
+        # Info label
+        info_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        info_frame.pack(fill="x", padx=PAD_SPACIOUS, pady=(PAD_DEFAULT, 0))
+
+        ctk.CTkLabel(
+            info_frame,
+            text="Define text replacements. When Whisper transcribes the 'Original' word, it will be replaced with 'Replacement'.",
+            **get_label_style("help"),
+            wraplength=750,
+            anchor="w",
+            justify="left",
+        ).pack(fill="x")
+
+        # Dictionary list area
+        list_frame = ctk.CTkScrollableFrame(
+            dialog,
+            fg_color=SLATE_800,
+            corner_radius=8,
+        )
+        list_frame.pack(fill="both", expand=True, padx=PAD_SPACIOUS, pady=PAD_DEFAULT)
+
+        # Column headers
+        headers_frame = ctk.CTkFrame(list_frame, fg_color=SLATE_700, corner_radius=6)
+        headers_frame.pack(fill="x", pady=(0, 8), padx=2)
+
+        ctk.CTkLabel(
+            headers_frame,
+            text="Original",
+            **get_label_style("default"),
+            width=300,
+            anchor="w",
+        ).pack(side="left", padx=12, pady=8)
+
+        ctk.CTkLabel(
+            headers_frame,
+            text="Replacement",
+            **get_label_style("default"),
+            width=300,
+            anchor="w",
+        ).pack(side="left", padx=12, pady=8)
+
+        # Container for dictionary items
+        items_container = ctk.CTkFrame(list_frame, fg_color="transparent")
+        items_container.pack(fill="both", expand=True)
+
+        # Load existing dictionary items
+        dict_items = []
+        for original, replacement in self.custom_dictionary.items():
+            dict_items.append({"original": original, "replacement": replacement})
+
+        # Function to refresh the display
+        def refresh_display():
+            # Clear existing items
+            for widget in items_container.winfo_children():
+                widget.destroy()
+
+            # Display all items
+            for item in dict_items:
+                item_frame = ctk.CTkFrame(items_container, fg_color=SLATE_700, corner_radius=6)
+                item_frame.pack(fill="x", pady=(0, 4), padx=2)
+
+                ctk.CTkLabel(
+                    item_frame,
+                    text=item["original"],
+                    **get_label_style("default"),
+                    width=300,
+                    anchor="w",
+                ).pack(side="left", padx=12, pady=8)
+
+                ctk.CTkLabel(
+                    item_frame,
+                    text=item["replacement"],
+                    **get_label_style("default"),
+                    width=300,
+                    anchor="w",
+                ).pack(side="left", padx=12, pady=8)
+
+                remove_btn = ctk.CTkButton(
+                    item_frame,
+                    text="Remove",
+                    width=80,
+                    **get_button_style("ghost"),
+                    command=lambda i=item: remove_item(i),
+                )
+                remove_btn.pack(side="right", padx=12, pady=8)
+
+        def add_item():
+            # Create a dialog to add new item
+            add_dialog = ctk.CTkToplevel(dialog)
+            add_dialog.title("Add Dictionary Entry")
+            add_dialog.geometry("400x200")
+            add_dialog.transient(dialog)
+            add_dialog.grab_set()
+            add_dialog.configure(fg_color=SLATE_900)
+
+            # Center on parent
+            add_dialog.update_idletasks()
+            dx = dialog.winfo_x() + (dialog.winfo_width() - 400) // 2
+            dy = dialog.winfo_y() + (dialog.winfo_height() - 200) // 2
+            add_dialog.geometry(f"+{dx}+{dy}")
+
+            content = ctk.CTkFrame(add_dialog, fg_color="transparent")
+            content.pack(fill="both", expand=True, padx=PAD_SPACIOUS, pady=PAD_SPACIOUS)
+
+            # Original field
+            ctk.CTkLabel(
+                content,
+                text="Original:",
+                **get_label_style("default"),
+                anchor="w",
+            ).pack(fill="x", pady=(0, 4))
+
+            original_entry = ctk.CTkEntry(content, **get_entry_style())
+            original_entry.pack(fill="x", pady=(0, 12))
+            original_entry.focus()
+
+            # Replacement field
+            ctk.CTkLabel(
+                content,
+                text="Replacement:",
+                **get_label_style("default"),
+                anchor="w",
+            ).pack(fill="x", pady=(0, 4))
+
+            replacement_entry = ctk.CTkEntry(content, **get_entry_style())
+            replacement_entry.pack(fill="x", pady=(0, 16))
+
+            # Buttons
+            btn_frame = ctk.CTkFrame(content, fg_color="transparent")
+            btn_frame.pack(fill="x")
+
+            def save_new_item():
+                original = original_entry.get().strip()
+                replacement = replacement_entry.get().strip()
+
+                if not original or not replacement:
+                    messagebox.showwarning("Invalid Entry", "Both fields are required.", parent=add_dialog)
+                    return
+
+                # Check for duplicates
+                if any(item["original"].lower() == original.lower() for item in dict_items):
+                    messagebox.showwarning("Duplicate Entry", "An entry with this original text already exists.", parent=add_dialog)
+                    return
+
+                dict_items.append({"original": original, "replacement": replacement})
+                refresh_display()
+                add_dialog.destroy()
+
+            ctk.CTkButton(
+                btn_frame,
+                text="Add",
+                width=100,
+                **get_button_style("primary"),
+                command=save_new_item,
+            ).pack(side="left", padx=(0, 8))
+
+            ctk.CTkButton(
+                btn_frame,
+                text="Cancel",
+                width=100,
+                **get_button_style("secondary"),
+                command=add_dialog.destroy,
+            ).pack(side="left")
+
+        def remove_item(item):
+            dict_items.remove(item)
+            refresh_display()
+
+        def save_dictionary():
+            # Update the custom_dictionary with new items
+            self.custom_dictionary = {item["original"]: item["replacement"] for item in dict_items}
+            dialog.destroy()
+
+        # Initial display
+        refresh_display()
+
+        # Footer with buttons
+        footer = ctk.CTkFrame(dialog, fg_color=SLATE_800, corner_radius=0, height=56)
+        footer.pack(fill="x", padx=0, pady=0)
+        footer.pack_propagate(False)
+
+        ctk.CTkButton(
+            footer,
+            text="Add Entry",
+            width=100,
+            **get_button_style("primary"),
+            command=add_item,
+        ).pack(side="left", padx=PAD_SPACIOUS, pady=PAD_DEFAULT)
+
+        ctk.CTkButton(
+            footer,
+            text="Save",
+            width=100,
+            **get_button_style("primary"),
+            command=save_dictionary,
+        ).pack(side="right", padx=(0, PAD_SPACIOUS), pady=PAD_DEFAULT)
+
+        ctk.CTkButton(
+            footer,
+            text="Cancel",
+            width=100,
+            **get_button_style("secondary"),
+            command=dialog.destroy,
+        ).pack(side="right", padx=(8, 0), pady=PAD_DEFAULT)
 
     def _open_vocabulary_editor(self):
         """Open vocabulary editor dialog."""
