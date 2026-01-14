@@ -1191,6 +1191,17 @@ class SettingsWindow:
             command=self.refresh_gpu_status,
         ).pack(side="right")
 
+        # Install GPU button (shown only when libraries not installed)
+        self.install_gpu_btn = ctk.CTkButton(
+            status_row,
+            text="Install GPU Support",
+            width=140,
+            **get_button_style("primary"),
+            command=self.install_gpu_support,
+        )
+        if not is_available and status_msg == "GPU libraries not installed":
+            self.install_gpu_btn.pack(side="right", padx=(0, 8))
+
         # Enable GPU
         gpu_enable_row = SettingRow(
             gpu_card.content_frame,
@@ -1678,6 +1689,135 @@ class SettingsWindow:
             "success" if is_available else "error",
             gpu_name or status_msg,
         )
+
+        # Show/hide install button based on library status
+        if hasattr(self, 'install_gpu_btn'):
+            if not is_available and status_msg == "GPU libraries not installed":
+                self.install_gpu_btn.pack(side="right", padx=(0, 8))
+            else:
+                self.install_gpu_btn.pack_forget()
+
+    def install_gpu_support(self):
+        """Install GPU dependencies via pip using a modal dialog."""
+        import subprocess
+        import threading
+        from tkinter import messagebox
+
+        # Find requirements-gpu.txt
+        req_file = resource_path("requirements-gpu.txt")
+        if not os.path.exists(req_file):
+            messagebox.showerror(
+                "File Not Found",
+                f"Could not find requirements-gpu.txt\n\n"
+                f"Expected at: {req_file}\n\n"
+                f"Please install manually:\n"
+                f"pip install -r requirements-gpu.txt",
+                parent=self.window,
+            )
+            return
+
+        # Confirmation dialog
+        if not messagebox.askyesno(
+            "Install GPU Support",
+            "This will download and install NVIDIA CUDA libraries.\n\n"
+            "Download size: ~2-3 GB\n"
+            "Requires: NVIDIA GPU with CUDA support\n\n"
+            "Continue?",
+            parent=self.window,
+        ):
+            return
+
+        # Create progress dialog
+        dialog = ctk.CTkToplevel(self.window)
+        dialog.title("Installing GPU Support")
+        dialog.geometry("400x150")
+        dialog.transient(self.window)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+
+        # Center on parent
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 400) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 150) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        # Prevent closing during install
+        dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            frame,
+            text="Installing NVIDIA CUDA Libraries",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(pady=(0, 10))
+
+        progress = ctk.CTkProgressBar(frame, width=300, mode="indeterminate")
+        progress.pack(pady=10)
+        progress.start()
+
+        status_label = ctk.CTkLabel(
+            frame,
+            text="Downloading... this may take several minutes",
+        )
+        status_label.pack(pady=(5, 0))
+
+        ctk.CTkLabel(
+            frame,
+            text="(Download size: ~2-3 GB)",
+            text_color="gray",
+        ).pack()
+
+        self._install_dialog = dialog
+        self._install_progress = progress
+        self._install_status = status_label
+
+        def run_install():
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-r", req_file],
+                    capture_output=True,
+                    text=True,
+                )
+                success = result.returncode == 0
+                output = result.stdout + result.stderr
+                self.window.after(0, lambda: self.install_complete(success, output))
+            except Exception as e:
+                self.window.after(0, lambda: self.install_complete(False, str(e)))
+
+        thread = threading.Thread(target=run_install, daemon=True)
+        thread.start()
+
+    def install_complete(self, success, output):
+        """Handle completion of GPU installation."""
+        from tkinter import messagebox
+
+        if hasattr(self, '_install_progress'):
+            self._install_progress.stop()
+        if hasattr(self, '_install_dialog') and self._install_dialog:
+            self._install_dialog.destroy()
+            self._install_dialog = None
+
+        if success:
+            self.refresh_gpu_status()
+            messagebox.showinfo(
+                "Installation Complete",
+                "GPU support installed successfully!\n\n"
+                "Restart MurmurTone to use GPU acceleration.",
+                parent=self.window,
+            )
+        else:
+            msg = (
+                "Installation failed.\n\n"
+                "Try installing manually:\n"
+                "1. Open Command Prompt as Administrator\n"
+                "2. Navigate to the app folder\n"
+                "3. Run: pip install -r requirements-gpu.txt\n\n"
+            )
+            if len(output) < 500:
+                msg += f"Error details:\n{output}"
+            messagebox.showerror("Installation Failed", msg, parent=self.window)
 
     def toggle_noise_test(self):
         """Start or stop the noise gate level test."""
