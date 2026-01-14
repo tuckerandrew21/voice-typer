@@ -202,7 +202,7 @@ Once installer is built (`build.bat`), test on clean VMs:
 ### Python 3.14 Incompatibility
 - **Issue**: PyAV (faster-whisper dependency) doesn't compile on Python 3.14
 - **Workaround**: Development uses Python 3.12
-- **Impact**: None for end users (PyInstaller bundles Python 3.11/3.12)
+- **Impact**: None for end users (PyInstaller bundles Python 3.12)
 
 ### AI Cleanup Prerequisites
 - Requires Ollama installed locally

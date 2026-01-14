@@ -7,7 +7,7 @@ Complete guide to building MurmurTone installer with bundled model.
 ## Prerequisites
 
 ### Required Software
-1. **Python 3.11+** - https://www.python.org/downloads/
+1. **Python 3.12** - https://www.python.org/downloads/
 2. **PyInstaller** - Installed automatically by build script
 3. **Inno Setup 6+** - https://jrsoftware.org/isdl.php (for installer)
 
@@ -283,7 +283,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |

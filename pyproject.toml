@@ -1,0 +1,7 @@
+[project]
+name = "murmurtone"
+version = "1.0.0"
+requires-python = ">=3.12,<3.14"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
