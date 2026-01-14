@@ -68,6 +68,14 @@ class Tooltip:
         self.tooltip = None
         widget.bind("<Enter>", self.show)
         widget.bind("<Leave>", self.hide)
+        # Hide on window move/minimize
+        toplevel = widget.winfo_toplevel()
+        toplevel.bind("<Configure>", self._on_window_configure, add="+")
+        toplevel.bind("<Unmap>", self.hide, add="+")
+
+    def _on_window_configure(self, event=None):
+        if event and event.widget == self.widget.winfo_toplevel():
+            self.hide()
 
     def show(self, event=None):
         if self.tooltip:
@@ -114,6 +122,14 @@ class HelpIcon(ctk.CTkLabel):
         self.tooltip = None
         self.bind("<Enter>", self.show)
         self.bind("<Leave>", self.hide)
+        # Hide on window move/minimize
+        toplevel = self.winfo_toplevel()
+        toplevel.bind("<Configure>", self._on_window_configure, add="+")
+        toplevel.bind("<Unmap>", self.hide, add="+")
+
+    def _on_window_configure(self, event=None):
+        if event and event.widget == self.winfo_toplevel():
+            self.hide()
 
     def show(self, event=None):
         if self.tooltip:
