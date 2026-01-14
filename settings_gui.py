@@ -337,6 +337,10 @@ class SettingsWindow:
         self.nav_items = {}
         self.sections = {}
 
+        # Search state
+        self.searchable_items = []  # List of (section_id, widget, original_text) tuples
+        self.current_search_query = ""
+
         # Custom data (preserved across saves)
         self.custom_dictionary = self.config.get("custom_dictionary", {})
         self.custom_vocabulary = self.config.get("custom_vocabulary", [])
@@ -448,6 +452,29 @@ class SettingsWindow:
         ctk.CTkFrame(self.sidebar, fg_color="transparent", height=1).pack(
             fill="both", expand=True
         )
+
+        # Search box
+        search_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        search_frame.pack(fill="x", padx=16, pady=(0, 12))
+
+        ctk.CTkLabel(
+            search_frame,
+            text="SEARCH",
+            font=("", 11, "bold"),
+            text_color=SLATE_500,
+            anchor="w",
+        ).pack(fill="x", pady=(0, 4))
+
+        self.search_var = ctk.StringVar()
+        self.search_var.trace_add("write", lambda *args: self._on_search_changed())
+
+        self.search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="Search settings...",
+            **get_entry_style(),
+        )
+        self.search_entry.pack(fill="x")
 
         # Footer links
         footer_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -599,6 +626,7 @@ class SettingsWindow:
         # Recording card
         recording_card = Card(section, title="Recording")
         recording_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("general", recording_card, "Recording hotkey push-to-talk mode language")
 
         # Hotkey
         hotkey_row = SettingRow(
@@ -665,6 +693,7 @@ class SettingsWindow:
         # Output card
         output_card = Card(section, title="Output")
         output_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("general", output_card, "Output auto-paste clipboard preview")
 
         # Auto-paste
         autopaste_row = SettingRow(
@@ -802,6 +831,7 @@ class SettingsWindow:
         # Input device card
         device_card = Card(section, title="Input Device")
         device_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("audio", device_card, "Input Device microphone sample rate")
 
         # Device selection
         device_row = SettingRow(
@@ -869,6 +899,7 @@ class SettingsWindow:
         # Noise gate card
         gate_card = Card(section, title="Noise Gate")
         gate_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("audio", gate_card, "Noise Gate threshold filter background noise")
 
         # Enable noise gate
         gate_enable_row = SettingRow(
@@ -1121,6 +1152,7 @@ class SettingsWindow:
         # Model card
         model_card = Card(section, title="Whisper Model")
         model_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("recognition", model_card, "Whisper Model size accuracy speed tiny base small medium large")
 
         # Model selection
         model_row = SettingRow(
@@ -1169,6 +1201,7 @@ class SettingsWindow:
         # GPU card
         gpu_card = Card(section, title="GPU Acceleration")
         gpu_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("recognition", gpu_card, "GPU Acceleration CUDA processing mode auto cpu balanced quality")
 
         # GPU status
         status_row = ctk.CTkFrame(gpu_card.content_frame, fg_color="transparent")
@@ -1275,6 +1308,7 @@ class SettingsWindow:
         # Voice commands card
         commands_card = Card(section, title="Voice Commands")
         commands_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("text", commands_card, "Voice Commands period comma new line scratch that")
 
         # Enable voice commands
         cmd_enable_row = SettingRow(
@@ -1359,6 +1393,7 @@ class SettingsWindow:
         # Dictionary card
         dict_card = Card(section, title="Custom Dictionary")
         dict_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("text", dict_card, "Custom Dictionary vocabulary replacements words")
 
         dict_info = ctk.CTkLabel(
             dict_card.content_frame,
@@ -1395,6 +1430,7 @@ class SettingsWindow:
         # AI Cleanup card
         ai_card = Card(section, title="AI Text Cleanup")
         ai_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("advanced", ai_card, "AI Text Cleanup Ollama LLM grammar professional casual creative")
 
         # Enable AI cleanup
         ai_enable_row = SettingRow(
@@ -1501,6 +1537,7 @@ class SettingsWindow:
         # History card
         history_card = Card(section, title="Transcription History")
         history_card.pack(fill="x", pady=(0, PAD_DEFAULT))
+        self._register_searchable("advanced", history_card, "Transcription History recent viewer")
 
         history_info = ctk.CTkLabel(
             history_card.content_frame,
@@ -2543,6 +2580,53 @@ class SettingsWindow:
         self.ai_cleanup_var.set(defaults.get("ai_cleanup_enabled", False))
         self.ai_mode_var.set(defaults.get("ai_cleanup_mode", "grammar"))
         self.ai_formality_var.set(defaults.get("ai_formality_level", "neutral"))
+
+    def _register_searchable(self, section_id, widget, text):
+        """Register a widget and text as searchable.
+
+        Args:
+            section_id: Section ID where this item belongs
+            widget: The widget to highlight/show when searching
+            text: The searchable text content
+        """
+        self.searchable_items.append((section_id, widget, text.lower()))
+
+    def _on_search_changed(self):
+        """Handle search query changes."""
+        query = self.search_var.get().strip().lower()
+        self.current_search_query = query
+
+        if not query:
+            # Clear search - restore all sections
+            self._clear_search_highlights()
+            return
+
+        # Find matching sections and items
+        matching_sections = set()
+        for section_id, widget, text in self.searchable_items:
+            if query in text:
+                matching_sections.add(section_id)
+
+        # If we have matches, highlight them
+        if matching_sections:
+            # Switch to first matching section
+            first_section = sorted(matching_sections)[0]
+            self._show_section(first_section)
+
+            # Highlight matching nav items
+            for section_id, nav_item in self.nav_items.items():
+                if section_id in matching_sections:
+                    nav_item.configure(fg_color=PRIMARY_DARK)
+                else:
+                    nav_item.configure(fg_color=SLATE_700 if section_id == self.current_section else "transparent")
+
+    def _clear_search_highlights(self):
+        """Clear all search highlights."""
+        # Reset nav item colors
+        for section_id, nav_item in self.nav_items.items():
+            active = section_id == self.current_section
+            style = get_nav_item_style(active=active)
+            nav_item.configure(**style)
 
     def close(self):
         """Close the settings window."""
