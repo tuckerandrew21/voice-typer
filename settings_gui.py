@@ -489,6 +489,29 @@ class SettingsWindow:
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
+        # Search box
+        search_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        search_frame.pack(fill="x", padx=16, pady=(16, 16))
+
+        ctk.CTkLabel(
+            search_frame,
+            text="SEARCH",
+            font=("", 11, "bold"),
+            text_color=SLATE_500,
+            anchor="w",
+        ).pack(fill="x", pady=(0, 4))
+
+        self.search_var = ctk.StringVar()
+        self.search_var.trace_add("write", lambda *args: self._on_search_changed())
+
+        self.search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="Search settings...",
+            **get_entry_style(),
+        )
+        self.search_entry.pack(fill="x")
+
         # Recording section
         SectionHeader(self.sidebar, "Recording").pack(
             fill="x", padx=12, pady=(20, 4)
@@ -513,33 +536,10 @@ class SettingsWindow:
 
         self._add_nav_item("about", "About", icon=None)
 
-        # Spacer
+        # Spacer to push footer to bottom
         ctk.CTkFrame(self.sidebar, fg_color="transparent", height=1).pack(
             fill="both", expand=True
         )
-
-        # Search box
-        search_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        search_frame.pack(fill="x", padx=16, pady=(0, 12))
-
-        ctk.CTkLabel(
-            search_frame,
-            text="SEARCH",
-            font=("", 11, "bold"),
-            text_color=SLATE_500,
-            anchor="w",
-        ).pack(fill="x", pady=(0, 4))
-
-        self.search_var = ctk.StringVar()
-        self.search_var.trace_add("write", lambda *args: self._on_search_changed())
-
-        self.search_entry = ctk.CTkEntry(
-            search_frame,
-            textvariable=self.search_var,
-            placeholder_text="Search settings...",
-            **get_entry_style(),
-        )
-        self.search_entry.pack(fill="x")
 
         # Footer links
         footer_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
