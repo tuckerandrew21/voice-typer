@@ -303,7 +303,8 @@ def apply_volume_to_wav(wav_data, volume):
     # Scale the samples (assuming 16-bit audio)
     samples = array.array('h', frames)
     for i in range(len(samples)):
-        samples[i] = int(samples[i] * volume)
+        # Clamp to valid 16-bit signed range to prevent overflow
+        samples[i] = max(-32768, min(32767, int(samples[i] * volume)))
 
     # Write back to WAV
     output = io.BytesIO()

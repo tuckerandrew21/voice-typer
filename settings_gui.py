@@ -2462,13 +2462,19 @@ class SettingsWindow:
         preview_position = PREVIEW_POSITION_VALUES.get(self.preview_position_var.get(), "bottom_right")
         preview_theme = PREVIEW_THEME_VALUES.get(self.preview_theme_var.get(), "dark")
 
+        # Convert hotkey string to dict format expected by config
+        if isinstance(self.hotkey, str):
+            hotkey_dict = {"ctrl": False, "shift": False, "alt": False, "key": self.hotkey}
+        else:
+            hotkey_dict = self.hotkey
+
         new_config = {
             "model_size": self.model_var.get(),
             "language": lang_code,
             "translation_enabled": self.translation_enabled_var.get(),
             "translation_source_language": trans_lang_code,
             "sample_rate": sample_rate,
-            "hotkey": self.hotkey,
+            "hotkey": hotkey_dict,
             "recording_mode": recording_mode,
             "silence_duration_sec": silence_duration,
             "audio_feedback": self.feedback_var.get(),
