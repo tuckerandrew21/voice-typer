@@ -931,8 +931,9 @@ def on_press(key):
 
     if check_hotkey():
         if is_recording:
-            # In auto_stop mode, pressing hotkey again stops recording (toggle)
-            if app_config.get("recording_mode") == "auto_stop":
+            # In auto_stop or toggle mode, pressing hotkey again stops recording
+            recording_mode = app_config.get("recording_mode")
+            if recording_mode in ("auto_stop", "toggle"):
                 threading.Thread(target=stop_recording, daemon=True).start()
         else:
             start_recording()
