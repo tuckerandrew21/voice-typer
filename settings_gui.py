@@ -293,7 +293,7 @@ class SettingsWindow:
 
         # Header row: title on left, X button on right
         header_row = ctk.CTkFrame(header_container, fg_color="transparent")
-        header_row.pack(fill="x", pady=(0, SPACE_LG))
+        header_row.pack(fill="x", pady=(0, SPACE_MD))
 
         self.page_title = ctk.CTkLabel(
             header_row,
@@ -304,31 +304,18 @@ class SettingsWindow:
         )
         self.page_title.pack(side="left")
 
-        # Close button (X) - 32x32, transparent, SLATE_400 text
-        close_btn = ctk.CTkButton(
-            header_row,
-            text="✕",
-            width=32,
-            height=32,
-            corner_radius=6,
-            fg_color="transparent",
-            hover_color=SLATE_700,
-            text_color=SLATE_400,
-            font=ctk.CTkFont(family=FONT_FAMILY, size=16),
-            command=self.close,
-        )
-        close_btn.pack(side="right")
-
         # Border below header
-        border = ctk.CTkFrame(header_container, fg_color=SLATE_600, height=1)
+        border = ctk.CTkFrame(header_container, fg_color=SLATE_600, height=2, corner_radius=0)
         border.pack(fill="x")
+        border.pack_propagate(False)
+        border.grid_propagate(False)
 
         # Scrollable content area
         self.scroll_frame = ctk.CTkScrollableFrame(
             self.content_area,
             fg_color="transparent",
         )
-        self.scroll_frame.pack(fill="both", expand=True, padx=SPACE_XL, pady=SPACE_LG)
+        self.scroll_frame.pack(fill="both", expand=True, padx=SPACE_XL, pady=SPACE_MD)
 
         # Footer with Save/Cancel buttons
         footer_sep = ctk.CTkFrame(self.content_area, fg_color=SLATE_700, height=1)
@@ -424,7 +411,7 @@ class SettingsWindow:
         Returns a frame for adding controls to.
         """
         container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(fill="x", pady=(0, SPACE_2XL))
+        container.pack(fill="x", pady=(0, SPACE_MD))
 
         # Section header - 14px semibold, SLATE_200
         if title:
@@ -450,14 +437,14 @@ class SettingsWindow:
 
         # Content frame with proper spacing
         content = ctk.CTkFrame(container, fg_color="transparent")
-        content.pack(fill="x", pady=(SPACE_LG, 0))
+        content.pack(fill="x", pady=(SPACE_SM, 0))
 
         return content
 
     def _create_toggle_setting(self, parent, label, help_text=None, variable=None, command=None):
         """Create toggle setting matching mockup: [toggle] [label + help on right]."""
         row = ctk.CTkFrame(parent, fg_color="transparent")
-        row.pack(fill="x", pady=(0, SPACE_MD))
+        row.pack(fill="x", pady=(0, SPACE_SM))
 
         # Toggle switch on left - 40x22
         switch = ctk.CTkSwitch(
@@ -475,23 +462,24 @@ class SettingsWindow:
             fg_color=SLATE_600,
             progress_color=PRIMARY,
         )
-        switch.pack(side="left", pady=(2, 0))
+        switch.pack(side="left", anchor="n", pady=(2, 0))
 
         # Text content on right
         text_frame = ctk.CTkFrame(row, fg_color="transparent")
-        text_frame.pack(side="left", padx=(SPACE_MD, 0), fill="x", expand=True)
+        text_frame.pack(side="left", anchor="n", padx=(SPACE_MD, 0), fill="x", expand=True)
 
-        # Label - 13px, SLATE_200
+        # Label - 13px, SLATE_200, tight height
         lbl = ctk.CTkLabel(
             text_frame,
             text=label,
             font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
+            height=16,
         )
         lbl.pack(fill="x")
 
-        # Help text - 11px, SLATE_500
+        # Help text - 11px, SLATE_500, tight height
         if help_text:
             help_lbl = ctk.CTkLabel(
                 text_frame,
@@ -499,15 +487,16 @@ class SettingsWindow:
                 font=ctk.CTkFont(family=FONT_FAMILY, size=11),
                 text_color=SLATE_500,
                 anchor="w",
+                height=14,
             )
-            help_lbl.pack(fill="x", pady=(SPACE_XS, 0))
+            help_lbl.pack(fill="x")
 
         return switch
 
     def _create_labeled_dropdown(self, parent, label, values, variable, help_text=None, width=160):
         """Create labeled dropdown: label above, dropdown below, help below."""
         container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(fill="x", pady=(0, SPACE_LG))
+        container.pack(fill="x", pady=(0, SPACE_SM))
 
         # Label - 13px, SLATE_200
         lbl = ctk.CTkLabel(
@@ -532,13 +521,14 @@ class SettingsWindow:
             border_color=SLATE_600,
             button_color=SLATE_700,
             button_hover_color=SLATE_600,
-            dropdown_fg_color=SLATE_800,
-            dropdown_hover_color=SLATE_700,
+            dropdown_fg_color=SLATE_700,
+            dropdown_hover_color=SLATE_600,
+            dropdown_text_color=SLATE_200,
             text_color=SLATE_200,
             font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             state="readonly",
         )
-        dropdown.pack(anchor="w", pady=(SPACE_SM, 0))
+        dropdown.pack(anchor="w", pady=(SPACE_XS, 0))
 
         # Help text
         if help_text:
@@ -556,7 +546,7 @@ class SettingsWindow:
     def _create_labeled_entry(self, parent, label, variable, help_text=None, width=80):
         """Create labeled entry: label above, entry below, help below."""
         container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(fill="x", pady=(0, SPACE_LG))
+        container.pack(fill="x", pady=(0, SPACE_SM))
 
         # Label
         lbl = ctk.CTkLabel(
@@ -581,7 +571,7 @@ class SettingsWindow:
             text_color=SLATE_200,
             font=ctk.CTkFont(family=FONT_FAMILY, size=13),
         )
-        entry.pack(anchor="w", pady=(SPACE_SM, 0))
+        entry.pack(anchor="w", pady=(SPACE_XS, 0))
 
         # Help text
         if help_text:
@@ -623,7 +613,7 @@ class SettingsWindow:
     def _create_hotkey_button(self, parent, initial_hotkey):
         """Create hotkey button matching mockup: [badge] Change."""
         container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(fill="x", pady=(0, SPACE_LG))
+        container.pack(fill="x", pady=(0, SPACE_SM))
 
         # Label above
         lbl = ctk.CTkLabel(
@@ -643,7 +633,7 @@ class SettingsWindow:
             border_width=1,
             corner_radius=8,
         )
-        btn_frame.pack(anchor="w", pady=(SPACE_SM, 0))
+        btn_frame.pack(anchor="w", pady=(SPACE_XS, 0))
 
         inner = ctk.CTkFrame(btn_frame, fg_color="transparent")
         inner.pack(padx=SPACE_LG, pady=SPACE_SM)
@@ -969,9 +959,14 @@ class SettingsWindow:
             width=280,
             height=36,
             corner_radius=8,
+            border_width=1,
             fg_color=SLATE_800,
             border_color=SLATE_600,
             button_color=SLATE_700,
+            button_hover_color=SLATE_600,
+            dropdown_fg_color=SLATE_700,
+            dropdown_hover_color=SLATE_600,
+            dropdown_text_color=SLATE_200,
             text_color=SLATE_200,
             font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             state="readonly",
@@ -1755,5 +1750,13 @@ def open_settings(current_config, on_save_callback=None):
 
 if __name__ == "__main__":
     import config as cfg
+    import tkinter as tk
+
+    # Create standard tk root (allows tkinter-mcp inspection)
+    root = tk.Tk()
+    root.withdraw()
+
+    # tkinter-mcp agent is auto-started by patcher when using tkinter-mcp-launch
+
     current = cfg.load_config()
     open_settings(current)
