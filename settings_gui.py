@@ -35,6 +35,9 @@ SUCCESS = "#10b981"
 WARNING = "#f59e0b"
 ERROR = "#ef4444"
 
+# Font family (matches HTML mockup line 52)
+FONT_FAMILY = "Segoe UI"
+
 # =============================================================================
 # SPACING - Exact match to HTML mockup CSS variables
 # =============================================================================
@@ -156,6 +159,7 @@ class SettingsWindow:
         # Audio test state
         self.noise_test_running = False
         self.noise_stream = None
+        self.meter_gradient_photo = None  # Audio meter gradient image
 
         # Custom data
         self.custom_dictionary = self.config.get("custom_dictionary", {})
@@ -218,7 +222,7 @@ class SettingsWindow:
         title = ctk.CTkLabel(
             self.sidebar,
             text="Settings",
-            font=ctk.CTkFont(size=20, weight="bold"),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=20, weight="bold"),
             text_color=SLATE_100,
             anchor="w",
         )
@@ -249,7 +253,7 @@ class SettingsWindow:
         version = ctk.CTkLabel(
             self.sidebar,
             text=f"MurmurTone v{config.VERSION}",
-            font=ctk.CTkFont(size=11),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=11),
             text_color=SLATE_500,
             anchor="w",
         )
@@ -262,7 +266,7 @@ class SettingsWindow:
             text=label,
             image=icon,  # CTkImage object
             compound="left",  # Icon on the left of text
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             anchor="w",
             height=36,
             corner_radius=8,
@@ -294,7 +298,7 @@ class SettingsWindow:
         self.page_title = ctk.CTkLabel(
             header_row,
             text="General",
-            font=ctk.CTkFont(size=20, weight="bold"),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=20, weight="bold"),
             text_color=SLATE_100,
             anchor="w",
         )
@@ -310,7 +314,7 @@ class SettingsWindow:
             fg_color="transparent",
             hover_color=SLATE_700,
             text_color=SLATE_400,
-            font=ctk.CTkFont(size=16),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=16),
             command=self.close,
         )
         close_btn.pack(side="right")
@@ -344,7 +348,7 @@ class SettingsWindow:
             fg_color=PRIMARY,
             hover_color=PRIMARY_DARK,
             text_color="white",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             command=self.save,
         )
         save_btn.pack(side="left", padx=(SPACE_XL, SPACE_SM), pady=10)
@@ -361,7 +365,7 @@ class SettingsWindow:
             border_color=SLATE_600,
             border_width=1,
             text_color=SLATE_200,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             command=self.close,
         )
         cancel_btn.pack(side="left", pady=10)
@@ -376,7 +380,7 @@ class SettingsWindow:
             fg_color="transparent",
             hover_color=SLATE_700,
             text_color=SLATE_200,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             command=self.reset_defaults,
         )
         reset_btn.pack(side="right", padx=SPACE_XL, pady=10)
@@ -427,7 +431,7 @@ class SettingsWindow:
             header = ctk.CTkLabel(
                 container,
                 text=title,
-                font=ctk.CTkFont(size=14, weight="bold"),
+                font=ctk.CTkFont(family=FONT_FAMILY, size=14, weight="bold"),
                 text_color=SLATE_200,
                 anchor="w",
             )
@@ -438,7 +442,7 @@ class SettingsWindow:
             desc = ctk.CTkLabel(
                 container,
                 text=description,
-                font=ctk.CTkFont(size=12),
+                font=ctk.CTkFont(family=FONT_FAMILY, size=12),
                 text_color=SLATE_400,
                 anchor="w",
             )
@@ -471,7 +475,7 @@ class SettingsWindow:
             fg_color=SLATE_600,
             progress_color=PRIMARY,
         )
-        switch.pack(side="left")
+        switch.pack(side="left", pady=(2, 0))
 
         # Text content on right
         text_frame = ctk.CTkFrame(row, fg_color="transparent")
@@ -481,7 +485,7 @@ class SettingsWindow:
         lbl = ctk.CTkLabel(
             text_frame,
             text=label,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
         )
@@ -492,7 +496,7 @@ class SettingsWindow:
             help_lbl = ctk.CTkLabel(
                 text_frame,
                 text=help_text,
-                font=ctk.CTkFont(size=11),
+                font=ctk.CTkFont(family=FONT_FAMILY, size=11),
                 text_color=SLATE_500,
                 anchor="w",
             )
@@ -509,7 +513,7 @@ class SettingsWindow:
         lbl = ctk.CTkLabel(
             container,
             text=label,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
         )
@@ -531,7 +535,7 @@ class SettingsWindow:
             dropdown_fg_color=SLATE_800,
             dropdown_hover_color=SLATE_700,
             text_color=SLATE_200,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             state="readonly",
         )
         dropdown.pack(anchor="w", pady=(SPACE_SM, 0))
@@ -541,7 +545,7 @@ class SettingsWindow:
             help_lbl = ctk.CTkLabel(
                 container,
                 text=help_text,
-                font=ctk.CTkFont(size=11),
+                font=ctk.CTkFont(family=FONT_FAMILY, size=11),
                 text_color=SLATE_500,
                 anchor="w",
             )
@@ -558,7 +562,7 @@ class SettingsWindow:
         lbl = ctk.CTkLabel(
             container,
             text=label,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
         )
@@ -575,7 +579,7 @@ class SettingsWindow:
             fg_color=SLATE_800,
             border_color=SLATE_600,
             text_color=SLATE_200,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
         )
         entry.pack(anchor="w", pady=(SPACE_SM, 0))
 
@@ -584,7 +588,7 @@ class SettingsWindow:
             help_lbl = ctk.CTkLabel(
                 container,
                 text=help_text,
-                font=ctk.CTkFont(size=11),
+                font=ctk.CTkFont(family=FONT_FAMILY, size=11),
                 text_color=SLATE_500,
                 anchor="w",
             )
@@ -601,7 +605,7 @@ class SettingsWindow:
             row,
             text=label,
             variable=variable,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             fg_color=PRIMARY,
             hover_color=PRIMARY_DARK,
@@ -625,7 +629,7 @@ class SettingsWindow:
         lbl = ctk.CTkLabel(
             container,
             text="Push-to-Talk Hotkey",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
         )
@@ -661,7 +665,7 @@ class SettingsWindow:
         change_lbl = ctk.CTkLabel(
             inner,
             text="Change",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
         )
         change_lbl.pack(side="left", padx=(SPACE_SM, 0))
@@ -680,7 +684,7 @@ class SettingsWindow:
         help_lbl = ctk.CTkLabel(
             container,
             text="Press and hold to record audio",
-            font=ctk.CTkFont(size=11),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=11),
             text_color=SLATE_500,
             anchor="w",
         )
@@ -758,10 +762,47 @@ class SettingsWindow:
             border_color=border,
             border_width=1,
             text_color=text_color,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             command=command,
         )
         return btn
+
+    def _create_status_dot(self, parent, color=SLATE_500):
+        """Create a circular status indicator matching mockup spec (10px circle)."""
+        dot = ctk.CTkFrame(
+            parent,
+            width=10,
+            height=10,
+            corner_radius=5,  # Circle: radius = width/2
+            fg_color=color,
+        )
+        dot.pack_propagate(False)  # Maintain exact size
+        dot.pack(side="left")
+        return dot
+
+    def _create_meter_gradient(self, width, height):
+        """Create gradient image for audio meter (green → orange → red)."""
+        from PIL import Image, ImageDraw, ImageTk
+
+        img = Image.new('RGB', (width, height))
+        draw = ImageDraw.Draw(img)
+
+        # Draw gradient: green -> orange -> red (matches mockup line 575)
+        for x in range(width):
+            if x < width * 0.7:  # 0-70%: green (#10b981) to orange (#f59e0b)
+                ratio = x / (width * 0.7)
+                r = int(16 + (245 - 16) * ratio)
+                g = int(185 + (158 - 185) * ratio)
+                b = int(129 + (11 - 129) * ratio)
+            else:  # 70-100%: orange to red (#ef4444)
+                ratio = (x - width * 0.7) / (width * 0.3)
+                r = int(245 + (239 - 245) * ratio)
+                g = int(158 + (68 - 158) * ratio)
+                b = int(11 + (68 - 11) * ratio)
+
+            draw.line([(x, 0), (x, height)], fill=(r, g, b))
+
+        return ImageTk.PhotoImage(img)
 
     # =========================================================================
     # GENERAL SECTION
@@ -772,7 +813,7 @@ class SettingsWindow:
         section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.sections["general"] = section
 
-        # Recording section
+        # Recording section (first section - no separator)
         recording = self._create_section_header(section, "Recording", "Configure how voice recording works")
 
         # Hotkey
@@ -894,7 +935,7 @@ class SettingsWindow:
         section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.sections["audio"] = section
 
-        # Input Device section
+        # Input Device section (first section - no separator)
         device = self._create_section_header(section, "Input Device", "Select and configure your microphone")
 
         # Microphone with refresh button
@@ -904,7 +945,7 @@ class SettingsWindow:
         mic_lbl = ctk.CTkLabel(
             mic_container,
             text="Microphone",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
         )
@@ -932,7 +973,7 @@ class SettingsWindow:
             border_color=SLATE_600,
             button_color=SLATE_700,
             text_color=SLATE_200,
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             state="readonly",
         )
         self.device_combo.pack(side="left")
@@ -971,7 +1012,7 @@ class SettingsWindow:
         threshold_lbl = ctk.CTkLabel(
             threshold_container,
             text="Threshold Level",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
         )
@@ -995,9 +1036,17 @@ class SettingsWindow:
         )
         self.noise_level_canvas.pack(side="left")
 
-        # Gradient fill
+        # Gradient fill (green → orange → red)
+        if not self.meter_gradient_photo:
+            self.meter_gradient_photo = self._create_meter_gradient(self.meter_width, self.meter_height)
+
+        self.meter_gradient_item = self.noise_level_canvas.create_image(
+            0, 0, anchor="nw", image=self.meter_gradient_photo
+        )
+
+        # Level indicator bar (will be clipped via canvas width)
         self.noise_level_bar = self.noise_level_canvas.create_rectangle(
-            0, 0, 90, self.meter_height, fill=SUCCESS, width=0
+            0, 0, 90, self.meter_height, fill="", width=0, state="hidden"
         )
 
         # Threshold marker
@@ -1012,7 +1061,7 @@ class SettingsWindow:
         self.threshold_label = ctk.CTkLabel(
             meter_row,
             text=f"{self.noise_threshold_var.get()} dB",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_300,
             width=60,
         )
@@ -1021,7 +1070,7 @@ class SettingsWindow:
         threshold_help = ctk.CTkLabel(
             threshold_container,
             text="Click or drag to adjust threshold",
-            font=ctk.CTkFont(size=11),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=11),
             text_color=SLATE_500,
             anchor="w",
         )
@@ -1062,7 +1111,7 @@ class SettingsWindow:
         volume_lbl = ctk.CTkLabel(
             volume_container,
             text="Volume",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             anchor="w",
         )
@@ -1079,7 +1128,7 @@ class SettingsWindow:
             to=100,
             variable=self.volume_var,
             width=150,
-            height=16,
+            height=6,  # Matches mockup line 492 (thin track)
             fg_color=SLATE_600,
             progress_color=PRIMARY,
             button_color=PRIMARY,
@@ -1090,7 +1139,7 @@ class SettingsWindow:
         self.volume_label = ctk.CTkLabel(
             slider_row,
             text=f"{self.volume_var.get()}%",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_300,
             width=50,
         )
@@ -1161,7 +1210,7 @@ class SettingsWindow:
         section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.sections["recognition"] = section
 
-        # Whisper Model section
+        # Whisper Model section (first section - no separator)
         model = self._create_section_header(section, "Whisper Model", "Choose the speech recognition model")
 
         self.model_var = ctk.StringVar(value=self.config.get("model_size", "base"))
@@ -1194,19 +1243,12 @@ class SettingsWindow:
         status_row.pack(fill="x")
 
         # Status dot
-        self.gpu_status_dot = ctk.CTkLabel(
-            status_row,
-            text="●",
-            font=ctk.CTkFont(size=12),
-            text_color=SUCCESS,
-            width=20,
-        )
-        self.gpu_status_dot.pack(side="left")
+        self.gpu_status_dot = self._create_status_dot(status_row, SUCCESS)
 
         self.gpu_status_text = ctk.CTkLabel(
             status_row,
             text="Checking...",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_300,
         )
         self.gpu_status_text.pack(side="left")
@@ -1262,13 +1304,13 @@ class SettingsWindow:
             import torch
             if torch.cuda.is_available():
                 gpu_name = torch.cuda.get_device_name(0)
-                self.gpu_status_dot.configure(text_color=SUCCESS)
+                self.gpu_status_dot.configure(fg_color=SUCCESS)
                 self.gpu_status_text.configure(text=gpu_name)
             else:
-                self.gpu_status_dot.configure(text_color=SLATE_500)
+                self.gpu_status_dot.configure(fg_color=SLATE_500)
                 self.gpu_status_text.configure(text="No GPU detected")
         except ImportError:
-            self.gpu_status_dot.configure(text_color=SLATE_500)
+            self.gpu_status_dot.configure(fg_color=SLATE_500)
             self.gpu_status_text.configure(text="PyTorch not installed")
 
     # =========================================================================
@@ -1280,7 +1322,7 @@ class SettingsWindow:
         section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.sections["text"] = section
 
-        # Voice Commands section
+        # Voice Commands section (first section - no separator)
         commands = self._create_section_header(section, "Voice Commands", 'Spoken commands like "new line" or "period"')
 
         self.voice_commands_var = ctk.BooleanVar(value=self.config.get("voice_commands_enabled", True))
@@ -1357,7 +1399,7 @@ class SettingsWindow:
         section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.sections["advanced"] = section
 
-        # AI Text Cleanup section
+        # AI Text Cleanup section (first section - no separator)
         ai = self._create_section_header(section, "AI Text Cleanup", "Use local LLM to polish transcriptions")
 
         self.ai_cleanup_var = ctk.BooleanVar(value=self.config.get("ai_cleanup_enabled", False))
@@ -1372,19 +1414,12 @@ class SettingsWindow:
         status_row = ctk.CTkFrame(ai, fg_color="transparent")
         status_row.pack(fill="x", pady=(0, SPACE_MD))
 
-        self.ollama_status_dot = ctk.CTkLabel(
-            status_row,
-            text="●",
-            font=ctk.CTkFont(size=12),
-            text_color=SLATE_500,
-            width=20,
-        )
-        self.ollama_status_dot.pack(side="left")
+        self.ollama_status_dot = self._create_status_dot(status_row, SLATE_500)
 
         self.ollama_status_text = ctk.CTkLabel(
             status_row,
             text="Not checked",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_300,
         )
         self.ollama_status_text.pack(side="left")
@@ -1437,13 +1472,13 @@ class SettingsWindow:
             url = self.config.get("ollama_url", "http://localhost:11434")
             response = requests.get(f"{url}/api/tags", timeout=2)
             if response.status_code == 200:
-                self.ollama_status_dot.configure(text_color=SUCCESS)
+                self.ollama_status_dot.configure(fg_color=SUCCESS)
                 self.ollama_status_text.configure(text="Ollama connected")
             else:
-                self.ollama_status_dot.configure(text_color=ERROR)
+                self.ollama_status_dot.configure(fg_color=ERROR)
                 self.ollama_status_text.configure(text="Connection failed")
         except Exception:
-            self.ollama_status_dot.configure(text_color=ERROR)
+            self.ollama_status_dot.configure(fg_color=ERROR)
             self.ollama_status_text.configure(text="Not running")
 
     def _view_history(self):
@@ -1459,7 +1494,7 @@ class SettingsWindow:
         section = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         self.sections["about"] = section
 
-        # App info
+        # App info (first section - no separator)
         info = self._create_section_header(section, "")
 
         # App row
@@ -1480,7 +1515,7 @@ class SettingsWindow:
         logo_icon = ctk.CTkLabel(
             logo,
             text="🎤",
-            font=ctk.CTkFont(size=28),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=28),
         )
         logo_icon.place(relx=0.5, rely=0.5, anchor="center")
 
@@ -1491,7 +1526,7 @@ class SettingsWindow:
         name = ctk.CTkLabel(
             details,
             text="MurmurTone",
-            font=ctk.CTkFont(size=18, weight="bold"),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=18, weight="bold"),
             text_color=SLATE_100,
             anchor="w",
         )
@@ -1500,7 +1535,7 @@ class SettingsWindow:
         version = ctk.CTkLabel(
             details,
             text=f"Version {config.VERSION}",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_400,
             anchor="w",
         )
@@ -1510,7 +1545,7 @@ class SettingsWindow:
         desc = ctk.CTkLabel(
             info,
             text="Local speech-to-text powered by OpenAI Whisper. Your voice stays on your device.",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
             text_color=SLATE_400,
             anchor="w",
             wraplength=500,
@@ -1528,12 +1563,17 @@ class SettingsWindow:
             link = ctk.CTkLabel(
                 info,
                 text=f"↗ {link_text}",
-                font=ctk.CTkFont(size=13),
+                font=ctk.CTkFont(family=FONT_FAMILY, size=13),
                 text_color=PRIMARY,
                 cursor="hand2",
                 anchor="w",
             )
             link.pack(fill="x", pady=(0, SPACE_SM))
+
+            # Hover effects (PRIMARY -> PRIMARY_LIGHT)
+            link.bind("<Enter>", lambda e, l=link: l.configure(text_color=PRIMARY_LIGHT))
+            link.bind("<Leave>", lambda e, l=link: l.configure(text_color=PRIMARY))
+
             if url:
                 link.bind("<Button-1>", lambda e, u=url: webbrowser.open(u))
             elif link_text == "Open Logs Folder":
@@ -1566,7 +1606,7 @@ class SettingsWindow:
         info_label = ctk.CTkLabel(
             sys_info,
             text="\n".join(info_text),
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
             text_color=SLATE_400,
             anchor="w",
             justify="left",
