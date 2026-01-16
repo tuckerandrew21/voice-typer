@@ -356,7 +356,9 @@ def play_sound(sound_data, sound_type=None):
 
     if sound_data:
         # Read current volume from config file (hot reload)
-        current_volume = config.load_config().get("audio_feedback_volume", 0.3)
+        # Volume is stored as 0-100 percentage, convert to 0.0-1.0 multiplier
+        volume_percent = config.load_config().get("audio_feedback_volume", 100)
+        current_volume = volume_percent / 100.0
         scaled_sound = apply_volume_to_wav(sound_data, current_volume)
 
         threading.Thread(
