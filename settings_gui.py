@@ -2,6 +2,7 @@
 MurmurTone Settings GUI - V2
 Rebuilt to exactly match the HTML mockup (Slack Examples/settings-mockup-v2.html)
 """
+import version_check  # noqa: F401 - Must be first, checks Python version
 
 import customtkinter as ctk
 import tkinter as tk
