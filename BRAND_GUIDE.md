@@ -317,24 +317,24 @@ All text color combinations meet WCAG AA standards:
 
 ### Font Families
 
-**Primary Font: Roboto**
+**Primary Font: Roboto Serif**
 
-The desktop application uses bundled Roboto font files for a softer, friendlier appearance.
+The desktop application uses bundled Roboto Serif font files for a softer, friendlier appearance.
 
 ```
-Desktop App: Roboto (bundled in assets/fonts/)
+Desktop App: Roboto Serif (bundled in assets/fonts/)
 ```
 
 **Web/Marketing Fallback Stack:**
 ```css
-font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+font-family: 'Roboto Serif', Georgia, 'Times New Roman', serif;
 ```
 
-**Why Roboto?**
-- Softer, rounder letterforms than Segoe UI
-- Friendlier, less "techy" feel
+**Why Roboto Serif?**
+- Warm, approachable serif design
+- Softer, friendlier feel than sans-serif alternatives
 - Excellent readability at all sizes
-- Open source (Apache 2.0 license)
+- Open source (OFL license)
 - Bundled with app for consistent experience
 
 **Monospace** (for hotkeys, code):

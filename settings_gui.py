@@ -39,8 +39,8 @@ SUCCESS = "#10b981"
 WARNING = "#f59e0b"
 ERROR = "#ef4444"
 
-# Font family - Roboto for softer, friendlier feel
-FONT_FAMILY = "Roboto"
+# Font family - Roboto Serif for softer, friendlier feel
+FONT_FAMILY = "Roboto Serif"
 
 # =============================================================================
 # SPACING - Exact match to HTML mockup CSS variables
