@@ -32,3 +32,7 @@ HANDOFF.md
 
 # Claude Code temp files
 tmpclaude-*
+
+# Local dev/test files
+.playwright-mcp/
+test_mcp.py
