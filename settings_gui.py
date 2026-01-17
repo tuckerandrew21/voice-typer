@@ -9,6 +9,8 @@ from tkinter import messagebox
 import webbrowser
 import os
 import sys
+import threading
+import subprocess
 from PIL import Image
 
 import config
@@ -2039,10 +2041,10 @@ class SettingsWindow:
         gpu = self._create_section_header(section, "GPU Acceleration", "Use graphics card for faster processing")
 
         # GPU status
-        gpu_status = ctk.CTkFrame(gpu, fg_color="transparent")
-        gpu_status.pack(fill="x", pady=(0, SPACE_MD))
+        self.gpu_status_frame = ctk.CTkFrame(gpu, fg_color="transparent")
+        self.gpu_status_frame.pack(fill="x", pady=(0, SPACE_MD))
 
-        status_row = ctk.CTkFrame(gpu_status, fg_color="transparent")
+        status_row = ctk.CTkFrame(self.gpu_status_frame, fg_color="transparent")
         status_row.pack(fill="x")
 
         # Status dot
@@ -2059,6 +2061,31 @@ class SettingsWindow:
         refresh_gpu = self._create_button(status_row, "Refresh", self.refresh_gpu_status, width=80)
         refresh_gpu.configure(fg_color="transparent", border_width=0)
         refresh_gpu.pack(side="left", padx=(SPACE_LG, 0))
+
+        # Install GPU Support button (hidden by default, shown when needed)
+        self.install_gpu_frame = ctk.CTkFrame(gpu, fg_color="transparent")
+        self.install_gpu_btn = ctk.CTkButton(
+            self.install_gpu_frame,
+            text="Install GPU Support",
+            command=self.install_gpu_support,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_DARK,
+            corner_radius=6,
+            height=32,
+        )
+        self.install_gpu_btn.pack(side="left")
+
+        install_help = ctk.CTkLabel(
+            self.install_gpu_frame,
+            text="?",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=11, weight="bold"),
+            text_color=SLATE_500,
+            cursor="question_arrow",
+        )
+        install_help.pack(side="left", padx=(SPACE_SM, 0))
+        # Pack it now to establish position, will be hidden/shown by refresh_gpu_status
+        self.install_gpu_frame.pack(fill="x", pady=(SPACE_SM, 0))
 
         # Processing mode
         processing_mode = self.config.get("processing_mode", "auto")
@@ -2103,18 +2130,251 @@ class SettingsWindow:
 
     def refresh_gpu_status(self):
         """Refresh GPU status display."""
-        try:
-            import torch
-            if torch.cuda.is_available():
-                gpu_name = torch.cuda.get_device_name(0)
-                self.gpu_status_dot.configure(fg_color=SUCCESS)
-                self.gpu_status_text.configure(text=gpu_name)
+        is_available, status_msg, detail = settings_logic.get_cuda_status()
+        cuda_libs_installed = status_msg != "GPU libraries not installed"
+
+        if is_available:
+            # Green status - GPU working
+            self.gpu_status_dot.configure(fg_color=SUCCESS)
+            display_text = detail if detail else status_msg
+            self.gpu_status_text.configure(text=display_text)
+            # Hide install button when CUDA is available
+            self.install_gpu_frame.pack_forget()
+        else:
+            # Gray/red status - GPU not available
+            self.gpu_status_dot.configure(fg_color=ERROR if not cuda_libs_installed else SLATE_500)
+            self.gpu_status_text.configure(text=status_msg)
+            # Show install button only if libraries aren't installed
+            if not cuda_libs_installed:
+                # Re-pack after status_row to maintain position
+                self.install_gpu_frame.pack(fill="x", pady=(SPACE_SM, 0), after=self.gpu_status_frame)
             else:
-                self.gpu_status_dot.configure(fg_color=SLATE_500)
-                self.gpu_status_text.configure(text="No GPU detected")
-        except ImportError:
-            self.gpu_status_dot.configure(fg_color=SLATE_500)
-            self.gpu_status_text.configure(text="PyTorch not installed")
+                self.install_gpu_frame.pack_forget()
+
+    def _show_gpu_confirm_dialog(self):
+        """Show custom confirmation dialog for GPU install. Returns True if confirmed."""
+        result = {"confirmed": False}
+
+        dialog = ctk.CTkToplevel(self.window)
+        dialog.title("Install GPU Support")
+        dialog.geometry("420x200")
+        dialog.resizable(False, False)
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        # Center on parent
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 420) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 200) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        dialog.configure(fg_color=SLATE_800)
+
+        # Set window icon
+        try:
+            icon_path = resource_path("icon.ico")
+            if os.path.exists(icon_path):
+                dialog.after(200, lambda: dialog.iconbitmap(icon_path))
+        except Exception:
+            pass
+
+        frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        frame.pack(fill="both", expand=True, padx=SPACE_LG, pady=SPACE_LG)
+
+        # Title
+        ctk.CTkLabel(
+            frame,
+            text="Install NVIDIA CUDA Libraries?",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=14, weight="bold"),
+            text_color=SLATE_100,
+        ).pack(pady=(SPACE_MD, SPACE_MD), anchor="center")
+
+        # Info text
+        ctk.CTkLabel(
+            frame,
+            text="Download size: ~2-3 GB\nRequires: NVIDIA GPU with CUDA support",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+            text_color=SLATE_400,
+            justify="center",
+        ).pack(pady=(0, SPACE_LG))
+
+        # Buttons
+        btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        btn_frame.pack(fill="x")
+
+        def on_yes():
+            result["confirmed"] = True
+            dialog.destroy()
+
+        def on_no():
+            dialog.destroy()
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Install",
+            command=on_yes,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_DARK,
+            width=100,
+            height=32,
+        ).pack(side="left", expand=True, padx=SPACE_SM)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=on_no,
+            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
+            fg_color=SLATE_700,
+            hover_color=SLATE_600,
+            width=100,
+            height=32,
+        ).pack(side="left", expand=True, padx=SPACE_SM)
+
+        dialog.wait_window()
+        return result["confirmed"]
+
+    def install_gpu_support(self):
+        """Install GPU dependencies via pip using a modal dialog."""
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Confirm with user using custom styled dialog
+        if not self._show_gpu_confirm_dialog():
+            return
+
+        # Create modal dialog
+        dialog = ctk.CTkToplevel(self.window)
+        dialog.title("Installing GPU Support")
+        dialog.geometry("420x260")
+        dialog.resizable(False, False)
+        dialog.transient(self.window)
+        dialog.grab_set()
+
+        # Center on parent window
+        dialog.update_idletasks()
+        x = self.window.winfo_x() + (self.window.winfo_width() - 420) // 2
+        y = self.window.winfo_y() + (self.window.winfo_height() - 200) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        # Prevent closing during install
+        dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        # Configure dialog appearance
+        dialog.configure(fg_color=SLATE_800)
+
+        # Set window icon
+        try:
+            icon_path = resource_path("icon.ico")
+            if os.path.exists(icon_path):
+                dialog.after(200, lambda: dialog.iconbitmap(icon_path))
+        except Exception:
+            pass
+
+        frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        frame.pack(fill="both", expand=True, padx=SPACE_LG, pady=SPACE_LG)
+
+        # Logo
+        try:
+            logo_path = resource_path(os.path.join("assets", "logo", "murmurtone-icon-transparent.png"))
+            if os.path.exists(logo_path):
+                logo_img = Image.open(logo_path)
+                logo_ctk = ctk.CTkImage(light_image=logo_img, dark_image=logo_img, size=(48, 48))
+                logo_label = ctk.CTkLabel(frame, image=logo_ctk, text="")
+                logo_label.pack(pady=(0, SPACE_SM))
+        except Exception:
+            pass  # Skip logo if it fails to load
+
+        # Title
+        title_label = ctk.CTkLabel(
+            frame,
+            text="Installing NVIDIA CUDA Libraries",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=14, weight="bold"),
+            text_color=SLATE_100,
+        )
+        title_label.pack(pady=(0, SPACE_MD))
+
+        # Progress bar
+        progress = ctk.CTkProgressBar(frame, width=360, mode="indeterminate")
+        progress.pack(pady=SPACE_SM)
+        progress.start()
+
+        # Status label
+        status_label = ctk.CTkLabel(
+            frame,
+            text="Downloading... this may take several minutes",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+            text_color=SLATE_400,
+        )
+        status_label.pack(pady=SPACE_SM)
+
+        # Size hint
+        size_hint = ctk.CTkLabel(
+            frame,
+            text="(Download size: ~2-3 GB)",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=11),
+            text_color=SLATE_500,
+        )
+        size_hint.pack()
+
+        # Store references for the completion handler
+        self._install_dialog = dialog
+        self._install_progress = progress
+        self._install_status = status_label
+
+        def run_install():
+            try:
+                # Install only GPU-specific packages to avoid dependency conflicts
+                # (user already has base deps since the app is running)
+                gpu_packages = [
+                    "nvidia-cublas-cu12>=12.1.0",
+                    "nvidia-cudnn-cu12>=9.1.0",
+                ]
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install"] + gpu_packages,
+                    capture_output=True,
+                    text=True,
+                    cwd=app_dir,
+                )
+                success = result.returncode == 0
+                output = result.stdout + result.stderr
+
+                # Schedule UI update on main thread
+                self.window.after(0, lambda: self._install_complete(success, output))
+            except Exception as e:
+                self.window.after(0, lambda: self._install_complete(False, str(e)))
+
+        # Run in background thread
+        thread = threading.Thread(target=run_install, daemon=True)
+        thread.start()
+
+    def _install_complete(self, success, output):
+        """Handle completion of GPU installation."""
+        # Stop progress and close dialog
+        if hasattr(self, "_install_progress"):
+            self._install_progress.stop()
+        if hasattr(self, "_install_dialog") and self._install_dialog:
+            self._install_dialog.destroy()
+
+        if success:
+            messagebox.showinfo(
+                "Installation Complete",
+                "GPU libraries installed successfully!\n\n"
+                "Please restart MurmurTone for changes to take effect.",
+                parent=self.window,
+            )
+        else:
+            # Show error with manual install instructions
+            error_msg = (
+                "Automatic GPU installation failed.\n\n"
+                "You can install manually by running:\n"
+                "pip install nvidia-cublas-cu12 nvidia-cudnn-cu12\n\n"
+                "If you have dependency conflicts, try:\n"
+                "pip install --no-deps nvidia-cublas-cu12 nvidia-cudnn-cu12"
+            )
+            messagebox.showwarning("Installation Failed", error_msg, parent=self.window)
+
+        # Refresh GPU status
+        self.refresh_gpu_status()
 
     # =========================================================================
     # TEXT SECTION
