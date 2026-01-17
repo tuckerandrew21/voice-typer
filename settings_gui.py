@@ -1186,6 +1186,8 @@ class SettingsWindow:
         # Show selected section
         if section_id in self.sections:
             self.sections[section_id].pack(fill="both", expand=True)
+            # Reset scroll position to top when switching tabs
+            self.scroll_frame._parent_canvas.yview_moveto(0)
 
         # Update page title
         titles = {
