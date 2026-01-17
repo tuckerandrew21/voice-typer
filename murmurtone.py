@@ -2,6 +2,8 @@
 MurmurTone - Private, local voice-to-text for Windows.
 Press hotkey to record, release to transcribe and type.
 """
+import version_check  # noqa: F401 - Must be first, checks Python version
+
 import sys
 import os
 import threading

@@ -7,6 +7,22 @@ echo MurmurTone Build Script v1.0
 echo ============================================
 echo.
 
+REM Check Python version (requires 3.12 or 3.13)
+python -c "import sys; v=sys.version_info[:2]; exit(0 if (3,12)<=v<(3,14) else 1)" 2>nul
+if errorlevel 1 (
+    echo ERROR: Build requires Python 3.12 or 3.13
+    echo.
+    echo Current Python version:
+    python --version
+    echo.
+    echo Install Python 3.12 from: https://www.python.org/downloads/
+    echo.
+    pause
+    exit /b 1
+)
+echo Python version OK
+echo.
+
 REM Step 1: Prepare bundled model
 echo [Step 1/3] Preparing tiny.en model for bundling...
 echo.
