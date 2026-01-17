@@ -2628,9 +2628,9 @@ class SettingsWindow:
 
         # Links
         links_data = [
-            ("View on GitHub", "https://github.com/murmurtone/murmurtone"),
+            ("View on GitHub", "https://github.com/tuckerandrew21/murmurtone"),
             ("Open Logs Folder", None),
-            ("Report an Issue", "https://github.com/murmurtone/murmurtone/issues"),
+            ("Report an Issue", "https://github.com/tuckerandrew21/murmurtone/issues"),
         ]
 
         for link_text, url in links_data:
