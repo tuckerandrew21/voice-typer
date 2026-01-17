@@ -36,3 +36,4 @@ tmpclaude-*
 # Local dev/test files
 .playwright-mcp/
 test_mcp.py
+Slack Examples/
