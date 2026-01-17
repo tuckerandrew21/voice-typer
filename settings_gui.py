@@ -148,6 +148,50 @@ ctk.set_default_color_theme("dark-blue")
 
 
 # =============================================================================
+# DEBOUNCE MANAGER - For autosave functionality
+# =============================================================================
+
+class DebounceManager:
+    """Manages debounced saves for text inputs and sliders."""
+
+    def __init__(self, window, save_callback, delay_ms=1500):
+        """
+        Args:
+            window: Tkinter window (for after() scheduling)
+            save_callback: Function to call when debounce timer expires
+            delay_ms: Delay in milliseconds before saving
+        """
+        self._window = window
+        self._save_callback = save_callback
+        self._delay_ms = delay_ms
+        self._pending_id = None
+
+    def schedule(self):
+        """Schedule a debounced save. Cancels any pending save."""
+        if self._pending_id:
+            self._window.after_cancel(self._pending_id)
+        self._pending_id = self._window.after(self._delay_ms, self._execute)
+
+    def _execute(self):
+        """Execute the save callback."""
+        self._pending_id = None
+        self._save_callback()
+
+    def flush(self):
+        """Immediately execute pending save if any."""
+        if self._pending_id:
+            self._window.after_cancel(self._pending_id)
+            self._pending_id = None
+            self._save_callback()
+
+    def cancel(self):
+        """Cancel any pending save without executing."""
+        if self._pending_id:
+            self._window.after_cancel(self._pending_id)
+            self._pending_id = None
+
+
+# =============================================================================
 # EDITOR DIALOGS
 # =============================================================================
 
@@ -913,6 +957,12 @@ class SettingsWindow:
         self.custom_vocabulary = self.config.get("custom_vocabulary", [])
         self.custom_commands = self.config.get("custom_commands", {})
 
+        # Autosave state (debounce managers initialized in show())
+        self._text_debounce = None
+        self._slider_debounce = None
+        self._status_label = None
+        self._status_hide_id = None
+
     def show(self):
         """Show the settings window."""
         self.window = ctk.CTk()
@@ -933,6 +983,10 @@ class SettingsWindow:
         # Load navigation icons
         self.nav_icons = load_nav_icons()
 
+        # Initialize debounce managers for autosave
+        self._text_debounce = DebounceManager(self.window, self._autosave, delay_ms=1500)
+        self._slider_debounce = DebounceManager(self.window, self._autosave, delay_ms=300)
+
         # Build UI
         self._create_sidebar()
         self._create_content_area()
@@ -948,9 +1002,30 @@ class SettingsWindow:
         # Show initial section
         self._show_section("general")
 
-        # Focus window
-        self.window.focus_force()
+        # Ensure window is visible and focused
+        self.window.update_idletasks()  # Process geometry
+
+        # Center on screen (with fallback position)
+        try:
+            screen_width = self.window.winfo_screenwidth()
+            screen_height = self.window.winfo_screenheight()
+            x = max(50, (screen_width - WINDOW_WIDTH) // 2)
+            y = max(50, (screen_height - WINDOW_HEIGHT) // 2)
+        except Exception:
+            x, y = 100, 100  # Fallback position
+        self.window.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
+
+        # Force window to be visible
+        self.window.state('normal')  # Ensure not minimized/maximized
+        self.window.deiconify()
+        self.window.update()
+
+        # Force to front (Windows-specific)
+        self.window.attributes('-topmost', True)
         self.window.lift()
+        self.window.focus_force()
+        self.window.after(200, lambda: self.window.attributes('-topmost', False))
+
         self.window.protocol("WM_DELETE_WINDOW", self.close)
         self.window.mainloop()
 
@@ -994,7 +1069,18 @@ class SettingsWindow:
 
         # Footer separator
         sep = ctk.CTkFrame(self.sidebar, fg_color=SLATE_600, height=1)
-        sep.pack(fill="x", padx=SPACE_LG, pady=(0, SPACE_LG))
+        sep.pack(fill="x", padx=SPACE_LG, pady=(0, SPACE_MD))
+
+        # Autosave status indicator
+        self._status_label = ctk.CTkLabel(
+            self.sidebar,
+            text="",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=11),
+            text_color=SUCCESS,
+            anchor="w",
+            height=16,
+        )
+        self._status_label.pack(fill="x", padx=SPACE_LG, pady=(0, SPACE_XS))
 
         # Version text - 11px, SLATE_500
         version = ctk.CTkLabel(
@@ -1064,45 +1150,7 @@ class SettingsWindow:
         )
         self.scroll_frame.pack(fill="both", expand=True, padx=SPACE_XL, pady=SPACE_MD)
 
-        # Footer with Save/Cancel buttons
-        footer_sep = ctk.CTkFrame(self.content_area, fg_color=SLATE_700, height=1)
-        footer_sep.pack(fill="x")
-
-        footer = ctk.CTkFrame(self.content_area, fg_color=SLATE_800, height=56, corner_radius=0)
-        footer.pack(fill="x")
-        footer.pack_propagate(False)
-
-        # Save button - primary style
-        save_btn = ctk.CTkButton(
-            footer,
-            text="Save",
-            width=100,
-            height=36,
-            corner_radius=8,
-            fg_color=PRIMARY,
-            hover_color=PRIMARY_DARK,
-            text_color="white",
-            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
-            command=self.save,
-        )
-        save_btn.pack(side="left", padx=(SPACE_XL, SPACE_SM), pady=10)
-
-        # Cancel button - secondary style
-        cancel_btn = ctk.CTkButton(
-            footer,
-            text="Cancel",
-            width=100,
-            height=36,
-            corner_radius=8,
-            fg_color=SLATE_800,
-            hover_color=SLATE_700,
-            border_color=SLATE_600,
-            border_width=1,
-            text_color=SLATE_200,
-            font=ctk.CTkFont(family=FONT_FAMILY, size=13),
-            command=self.close,
-        )
-        cancel_btn.pack(side="left", pady=10)
+        # Note: Save/Cancel buttons removed - using autosave instead
 
     def _show_section(self, section_id):
         """Show a specific section."""
@@ -1178,12 +1226,18 @@ class SettingsWindow:
         row = ctk.CTkFrame(parent, fg_color="transparent")
         row.pack(fill="x", pady=(0, SPACE_SM))
 
+        # Wrap command to include autosave
+        def on_toggle():
+            if command:
+                command()
+            self._autosave()
+
         # Toggle switch on left - 40x22
         switch = ctk.CTkSwitch(
             row,
             text="",
             variable=variable,
-            command=command,
+            command=on_toggle,
             width=40,
             height=22,
             switch_width=40,
@@ -1225,7 +1279,7 @@ class SettingsWindow:
 
         return switch
 
-    def _create_labeled_dropdown(self, parent, label, values, variable, help_text=None, width=160):
+    def _create_labeled_dropdown(self, parent, label, values, variable, help_text=None, width=160, command=None):
         """Create labeled dropdown: label above, dropdown below, help below."""
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(fill="x", pady=(0, SPACE_SM))
@@ -1240,11 +1294,18 @@ class SettingsWindow:
         )
         lbl.pack(fill="x")
 
+        # Wrap command to include autosave
+        def on_dropdown_change(choice):
+            if command:
+                command(choice)
+            self._autosave()
+
         # Dropdown - matches mockup styling
         dropdown = ctk.CTkComboBox(
             container,
             values=values,
             variable=variable,
+            command=on_dropdown_change,
             width=width,
             height=36,
             corner_radius=8,
@@ -1305,6 +1366,17 @@ class SettingsWindow:
         )
         entry.pack(anchor="w", pady=(SPACE_XS, 0))
 
+        # Debounced autosave on text change
+        def on_entry_change(*args):
+            self._text_debounce.schedule()
+
+        def on_focus_out(event):
+            self._text_debounce.flush()
+
+        variable.trace_add("write", on_entry_change)
+        entry.bind("<FocusOut>", on_focus_out)
+        entry.bind("<Return>", lambda e: self._text_debounce.flush())
+
         # Help text
         if help_text:
             help_lbl = ctk.CTkLabel(
@@ -1318,15 +1390,22 @@ class SettingsWindow:
 
         return entry
 
-    def _create_checkbox_setting(self, parent, label, variable):
+    def _create_checkbox_setting(self, parent, label, variable, command=None):
         """Create checkbox setting matching mockup."""
         row = ctk.CTkFrame(parent, fg_color="transparent")
         row.pack(fill="x", pady=(0, SPACE_SM))
+
+        # Wrap command to include autosave
+        def on_checkbox():
+            if command:
+                command()
+            self._autosave()
 
         checkbox = ctk.CTkCheckBox(
             row,
             text=label,
             variable=variable,
+            command=on_checkbox,
             font=ctk.CTkFont(family=FONT_FAMILY, size=13),
             text_color=SLATE_200,
             fg_color=PRIMARY,
@@ -1459,6 +1538,9 @@ class SettingsWindow:
         if hasattr(self, 'listener') and self.listener:
             self.listener.stop()
             self.listener = None
+        # Autosave after hotkey capture (use after() to ensure main thread)
+        if self.window:
+            self.window.after(100, self._autosave)
 
     def _create_button(self, parent, text, command=None, style="secondary", width=None):
         """Create a button matching mockup styles."""
@@ -1688,6 +1770,7 @@ class SettingsWindow:
             mic_row,
             values=display_names,
             variable=self.device_var,
+            command=lambda choice: self._autosave(),
             width=280,
             height=36,
             corner_radius=8,
@@ -1875,6 +1958,8 @@ class SettingsWindow:
 
         def update_volume_label(*args):
             self.volume_label.configure(text=f"{self.volume_var.get()}%")
+            # Schedule debounced autosave
+            self._slider_debounce.schedule()
         self.volume_var.trace_add("write", update_volume_label)
 
     def _db_to_x(self, db):
@@ -1898,6 +1983,8 @@ class SettingsWindow:
             event.x, 0, event.x, self.meter_height
         )
         self.threshold_label.configure(text=f"{db} dB")
+        # Schedule debounced autosave (for drag operations)
+        self._slider_debounce.schedule()
 
     def _on_threshold_drag(self, event):
         """Handle drag on threshold meter."""
@@ -2431,6 +2518,7 @@ class SettingsWindow:
         """Open dictionary editor."""
         def on_save(items):
             self.custom_dictionary = items
+            self._autosave()
 
         DictionaryEditor(self.window, self.custom_dictionary, on_save)
 
@@ -2438,6 +2526,7 @@ class SettingsWindow:
         """Open vocabulary editor."""
         def on_save(items):
             self.custom_vocabulary = items
+            self._autosave()
 
         VocabularyEditor(self.window, self.custom_vocabulary, on_save)
 
@@ -2445,6 +2534,7 @@ class SettingsWindow:
         """Open shortcuts editor."""
         def on_save(items):
             self.custom_commands = items
+            self._autosave()
 
         ShortcutsEditor(self.window, self.custom_commands, on_save)
 
@@ -2695,7 +2785,128 @@ class SettingsWindow:
         os.startfile(logs_dir)
 
     # =========================================================================
-    # SAVE / RESET / CLOSE
+    # AUTOSAVE
+    # =========================================================================
+
+    def _show_save_status(self, state):
+        """Show save status in sidebar: 'saving', 'saved', or 'error'."""
+        if not self._status_label:
+            return
+
+        # Cancel any pending hide
+        if self._status_hide_id:
+            self.window.after_cancel(self._status_hide_id)
+            self._status_hide_id = None
+
+        if state == "saving":
+            self._status_label.configure(text="Saving...", text_color=SLATE_400)
+        elif state == "saved":
+            self._status_label.configure(text="Saved", text_color=SUCCESS)
+            # Auto-hide after 2 seconds
+            self._status_hide_id = self.window.after(
+                2000, lambda: self._status_label.configure(text="")
+            )
+        elif state == "error":
+            self._status_label.configure(text="Save failed", text_color=ERROR)
+
+    def _build_config_dict(self):
+        """Build configuration dictionary from current widget values."""
+        # Validate inputs
+        rate_str = self.rate_var.get()
+        rate_value = rate_str.split()[0]
+        sample_rate = settings_logic.validate_sample_rate(rate_value)
+        silence_duration = settings_logic.validate_silence_duration(self.silence_var.get())
+
+        # Get device info
+        device_info = self.get_selected_device_info()
+
+        # Convert language labels to codes
+        lang_code = settings_logic.language_label_to_code(self.lang_var.get())
+        trans_lang_code = settings_logic.language_label_to_code(self.trans_lang_var.get())
+
+        # Convert processing mode
+        processing_mode = settings_logic.processing_mode_label_to_code(
+            self.processing_mode_var.get()
+        )
+
+        # Convert display labels back to internal values
+        recording_mode = RECORDING_MODE_VALUES.get(self.mode_var.get(), "push_to_talk")
+        paste_mode = PASTE_MODE_VALUES.get(self.paste_mode_var.get(), "clipboard")
+        preview_position = PREVIEW_POSITION_VALUES.get(self.preview_position_var.get(), "bottom_right")
+        preview_theme = PREVIEW_THEME_VALUES.get(self.preview_theme_var.get(), "dark")
+
+        # Convert hotkey string to dict format expected by config
+        if isinstance(self.hotkey, str):
+            hotkey_dict = {"ctrl": False, "shift": False, "alt": False, "key": self.hotkey}
+        else:
+            hotkey_dict = self.hotkey
+
+        return {
+            "model_size": self.model_var.get(),
+            "language": lang_code,
+            "translation_enabled": self.translation_enabled_var.get(),
+            "translation_source_language": trans_lang_code,
+            "sample_rate": sample_rate,
+            "hotkey": hotkey_dict,
+            "recording_mode": recording_mode,
+            "silence_duration_sec": silence_duration,
+            "audio_feedback": self.feedback_var.get(),
+            "input_device": device_info,
+            "auto_paste": self.autopaste_var.get(),
+            "paste_mode": paste_mode,
+            "start_with_windows": self.startup_var.get(),
+            "processing_mode": processing_mode,
+            "noise_gate_enabled": self.noise_gate_var.get(),
+            "noise_gate_threshold_db": self.noise_threshold_var.get(),
+            "audio_feedback_volume": self.volume_var.get(),
+            "sound_processing": self.sound_processing_var.get(),
+            "sound_success": self.sound_success_var.get(),
+            "sound_error": self.sound_error_var.get(),
+            "sound_command": self.sound_command_var.get(),
+            "voice_commands_enabled": self.voice_commands_var.get(),
+            "scratch_that_enabled": self.scratch_that_var.get(),
+            "filler_removal_enabled": self.filler_var.get(),
+            "filler_removal_aggressive": self.filler_aggressive_var.get(),
+            "custom_fillers": self.config.get("custom_fillers", []),
+            "custom_dictionary": self.custom_dictionary,
+            "custom_vocabulary": self.custom_vocabulary,
+            "custom_commands": self.custom_commands,
+            "ai_cleanup_enabled": self.ai_cleanup_var.get(),
+            "ai_cleanup_mode": self.ai_mode_var.get(),
+            "ai_formality_level": self.ai_formality_var.get(),
+            "ollama_model": self.ai_model_var.get(),
+            "ollama_url": self.config.get("ollama_url", "http://localhost:11434"),
+            "preview_enabled": self.preview_enabled_var.get(),
+            "preview_position": preview_position,
+            "preview_theme": preview_theme,
+            "preview_auto_hide_delay": float(self.preview_delay_var.get() or 2.0),
+            "preview_font_size": self.preview_font_size_var.get(),
+        }
+
+    def _autosave(self):
+        """Save current settings immediately (called by widget callbacks)."""
+        try:
+            new_config = self._build_config_dict()
+
+            # Save to file
+            config.save_config(new_config)
+
+            # Update startup registry if needed
+            config.set_startup_enabled(self.startup_var.get())
+
+            # Show status
+            self._show_save_status("saved")
+
+            # Notify main app (for settings that affect runtime)
+            if self.on_save_callback:
+                self.on_save_callback(new_config)
+
+        except Exception as e:
+            self._show_save_status("error")
+            print(f"Autosave error: {e}")
+
+    # =========================================================================
+    # SAVE / RESET / CLOSE (Legacy - save() kept for compatibility)
     # =========================================================================
 
     def save(self):
@@ -2899,6 +3110,12 @@ class SettingsWindow:
 
     def close(self):
         """Close the settings window."""
+        # Flush any pending autosaves
+        if self._text_debounce:
+            self._text_debounce.flush()
+        if self._slider_debounce:
+            self._slider_debounce.flush()
+
         if self.noise_test_running:
             self.stop_noise_test()
         if self.window:
