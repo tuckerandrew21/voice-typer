@@ -12,6 +12,7 @@ import os
 import sys
 import threading
 import subprocess
+import ctypes
 from PIL import Image
 
 import config
@@ -38,8 +39,8 @@ SUCCESS = "#10b981"
 WARNING = "#f59e0b"
 ERROR = "#ef4444"
 
-# Font family (matches HTML mockup line 52)
-FONT_FAMILY = "Segoe UI"
+# Font family - Roboto for softer, friendlier feel
+FONT_FAMILY = "Roboto"
 
 # =============================================================================
 # SPACING - Exact match to HTML mockup CSS variables
@@ -141,6 +142,22 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+
+def load_custom_fonts():
+    """Load bundled fonts for the current process (Windows only)."""
+    if sys.platform != "win32":
+        return
+    fonts_dir = os.path.join(os.path.dirname(__file__), "assets", "fonts")
+    if os.path.exists(fonts_dir):
+        FR_PRIVATE = 0x10  # Font is available only to this process
+        for filename in os.listdir(fonts_dir):
+            if filename.lower().endswith(".ttf"):
+                font_path = os.path.join(fonts_dir, filename)
+                ctypes.windll.gdi32.AddFontResourceExW(font_path, FR_PRIVATE, 0)
+
+
+# Load custom fonts before initializing GUI
+load_custom_fonts()
 
 # Configure CustomTkinter
 ctk.set_appearance_mode("dark")
@@ -1308,7 +1325,7 @@ class SettingsWindow:
             command=on_dropdown_change,
             width=width,
             height=36,
-            corner_radius=8,
+            corner_radius=12,
             border_width=1,
             fg_color=SLATE_800,
             border_color=SLATE_600,
@@ -1412,7 +1429,7 @@ class SettingsWindow:
             hover_color=PRIMARY_DARK,
             border_color=SLATE_500,
             checkmark_color="white",
-            corner_radius=4,
+            corner_radius=6,
             border_width=2,
             width=18,
             height=18,
@@ -1456,7 +1473,7 @@ class SettingsWindow:
             font=ctk.CTkFont(family="Consolas", size=12),
             text_color=SLATE_300,
             fg_color=SLATE_700,
-            corner_radius=4,
+            corner_radius=8,
             padx=8,
             pady=2,
         )
@@ -1773,7 +1790,7 @@ class SettingsWindow:
             command=lambda choice: self._autosave(),
             width=280,
             height=36,
-            corner_radius=8,
+            corner_radius=12,
             border_width=1,
             fg_color=SLATE_800,
             border_color=SLATE_600,
