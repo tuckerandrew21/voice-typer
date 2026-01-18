@@ -1347,6 +1347,7 @@ class SettingsWindow:
         make_combobox_clickable(dropdown)
 
         # Help text
+        help_lbl = None
         if help_text:
             help_lbl = ctk.CTkLabel(
                 container,
@@ -1357,7 +1358,7 @@ class SettingsWindow:
             )
             help_lbl.pack(fill="x", pady=(SPACE_XS, 0))
 
-        return dropdown
+        return dropdown, help_lbl
 
     def _create_labeled_entry(self, parent, label, variable, help_text=None, width=80):
         """Create labeled entry: label above, entry below, help below."""
@@ -1540,6 +1541,20 @@ class SettingsWindow:
         if hasattr(self, 'hotkey_help_label'):
             self.hotkey_help_label.configure(text=text)
 
+    def _update_paste_help_text(self, mode_label=None):
+        """Update paste method help text based on selected mode."""
+        if mode_label is None:
+            mode_label = self.paste_mode_var.get() if hasattr(self, 'paste_mode_var') else "Clipboard"
+
+        help_texts = {
+            "Clipboard": "Copies text to clipboard and pastes with Ctrl+V",
+            "Type": "Simulates typing each character (slower but more compatible)",
+        }
+        text = help_texts.get(mode_label, "How text is inserted")
+
+        if hasattr(self, 'paste_help_label') and self.paste_help_label:
+            self.paste_help_label.configure(text=text)
+
     def _start_hotkey_capture(self):
         """Start capturing a hotkey."""
         if self.capturing:
@@ -1705,14 +1720,17 @@ class SettingsWindow:
         # Paste method (use display labels)
         paste_value = self.config.get("paste_mode", "clipboard")
         self.paste_mode_var = ctk.StringVar(value=PASTE_MODE_LABELS.get(paste_value, "Clipboard"))
-        self._create_labeled_dropdown(
+        _, self.paste_help_label = self._create_labeled_dropdown(
             output,
             "Paste Method",
             values=list(PASTE_MODE_LABELS.values()),
             variable=self.paste_mode_var,
             help_text="How text is inserted",
             width=120,
+            command=self._update_paste_help_text,
         )
+        # Set initial paste help text based on loaded mode
+        self._update_paste_help_text()
 
         # Preview Window section
         preview = self._create_section_header(section, "Preview Window", "Floating overlay showing transcription progress")
@@ -3365,6 +3383,7 @@ class SettingsWindow:
         self.lang_var.set(settings_logic.language_code_to_label(defaults["language"]))
         self.autopaste_var.set(defaults["auto_paste"])
         self.paste_mode_var.set(PASTE_MODE_LABELS.get(defaults["paste_mode"], "Clipboard"))
+        self._update_paste_help_text()  # Update help text after paste mode change
         self.preview_enabled_var.set(defaults["preview_enabled"])
         self.preview_position_var.set(PREVIEW_POSITION_LABELS.get(defaults["preview_position"], "Bottom Right"))
         self.preview_theme_var.set(PREVIEW_THEME_LABELS.get(defaults["preview_theme"], "Dark"))
