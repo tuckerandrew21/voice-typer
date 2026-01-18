@@ -1505,15 +1505,15 @@ class SettingsWindow:
 
         self.hotkey_btn_frame = btn_frame
 
-        # Help text
-        help_lbl = ctk.CTkLabel(
+        # Help text (updated dynamically based on recording mode)
+        self.hotkey_help_label = ctk.CTkLabel(
             container,
-            text="Press and hold to record audio",
+            text="Press and hold to record audio",  # Default, updated by _update_hotkey_help_text
             font=ctk.CTkFont(family=FONT_FAMILY, size=11),
             text_color=SLATE_500,
             anchor="w",
         )
-        help_lbl.pack(fill="x", pady=(SPACE_XS, 0))
+        self.hotkey_help_label.pack(fill="x", pady=(SPACE_XS, 0))
 
     def _format_hotkey(self, hotkey):
         """Format hotkey for display."""
@@ -1524,6 +1524,21 @@ class SettingsWindow:
         parts = hotkey.split("+")
         formatted = [p.replace("_", " ").title() for p in parts]
         return " + ".join(formatted)
+
+    def _update_hotkey_help_text(self, mode_label=None):
+        """Update hotkey help text based on recording mode."""
+        if mode_label is None:
+            mode_label = self.mode_var.get() if hasattr(self, 'mode_var') else "Push-to-Talk"
+
+        help_texts = {
+            "Push-to-Talk": "Press and hold to record audio",
+            "Toggle": "Press to start recording, press again to stop",
+            "Auto-stop": "Press to start recording, stops after silence",
+        }
+        text = help_texts.get(mode_label, "Press and hold to record audio")
+
+        if hasattr(self, 'hotkey_help_label'):
+            self.hotkey_help_label.configure(text=text)
 
     def _start_hotkey_capture(self):
         """Start capturing a hotkey."""
@@ -1657,7 +1672,10 @@ class SettingsWindow:
             variable=self.mode_var,
             help_text="How recording starts and stops",
             width=160,
+            command=self._update_hotkey_help_text,
         )
+        # Set initial hotkey help text based on loaded recording mode
+        self._update_hotkey_help_text()
 
         # Language
         self.lang_var = ctk.StringVar(
@@ -3343,6 +3361,7 @@ class SettingsWindow:
 
         # General tab
         self.mode_var.set(RECORDING_MODE_LABELS.get(defaults["recording_mode"], "Push-to-Talk"))
+        self._update_hotkey_help_text()  # Update help text after mode change
         self.lang_var.set(settings_logic.language_code_to_label(defaults["language"]))
         self.autopaste_var.set(defaults["auto_paste"])
         self.paste_mode_var.set(PASTE_MODE_LABELS.get(defaults["paste_mode"], "Clipboard"))
