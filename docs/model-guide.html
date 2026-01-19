@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings Guide - MurmurTone Documentation</title>
-    <meta name="description" content="Configure MurmurTone: models, hotkeys, audio settings, custom vocabulary, and more.">
+    <title>Model Guide - MurmurTone Documentation</title>
+    <meta name="description" content="Choose the right Whisper model for your needs. Compare speed, accuracy, and use cases.">
     <link rel="icon" type="image/png" href="/icon.png">
     <style>
         :root {
@@ -63,9 +63,15 @@
         .settings-table th { background: var(--slate-100); padding: 12px 15px; text-align: left; border-bottom: 2px solid var(--slate-300); color: var(--slate-700); }
         .settings-table td { padding: 12px 15px; border-bottom: 1px solid var(--slate-200); vertical-align: top; }
         .settings-table tr:nth-child(even) { background: var(--slate-50); }
+        .recommended { background: rgba(13, 148, 136, 0.1) !important; }
+        .recommended td:first-child::after { content: " (Recommended)"; color: var(--primary); font-weight: 600; font-size: 0.85em; }
         .docs-footer { padding: 30px 40px; border-top: 1px solid var(--slate-200); margin-top: 60px; display: flex; justify-content: space-between; }
         .docs-footer a { color: var(--primary); text-decoration: none; }
         .docs-footer a:hover { text-decoration: underline; }
+        .decision-card { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 8px; padding: 20px; margin: 15px 0; }
+        .decision-card h4 { color: var(--slate-800); margin-bottom: 10px; }
+        .decision-card p { margin-bottom: 8px; }
+        .decision-card code { background: var(--white); }
         /* Hamburger Menu */
         .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
         .nav-hamburger span { width: 25px; height: 3px; background: var(--slate-700); border-radius: 2px; transition: all 0.3s; }
@@ -132,9 +138,9 @@
         </div>
         <div class="mobile-docs-links">
             <a href="/docs/">Introduction</a>
-            <a href="/docs/model-guide.html">Model Guide</a>
+            <a href="/docs/model-guide.html" class="active">Model Guide</a>
             <a href="/docs/voice-commands.html">Voice Commands</a>
-            <a href="/docs/settings.html" class="active">Settings Guide</a>
+            <a href="/docs/settings.html">Settings Guide</a>
             <a href="/docs/troubleshooting.html">Troubleshooting</a>
             <a href="/#faq">FAQ</a>
         </div>
@@ -144,10 +150,10 @@
         <aside class="sidebar">
             <h3>Getting Started</h3>
             <a href="/docs/">Introduction</a>
-            <a href="/docs/model-guide.html">Model Guide</a>
+            <a href="/docs/model-guide.html" class="active">Model Guide</a>
             <h3>Usage</h3>
             <a href="/docs/voice-commands.html">Voice Commands</a>
-            <a href="/docs/settings.html" class="active">Settings Guide</a>
+            <a href="/docs/settings.html">Settings Guide</a>
             <h3>Help</h3>
             <a href="/docs/troubleshooting.html">Troubleshooting</a>
             <a href="/#faq">FAQ</a>
@@ -155,147 +161,187 @@
         </aside>
 
         <main class="docs-content">
-            <h1>Settings Guide</h1>
-            <p class="subtitle">Configure MurmurTone to work exactly how you want.</p>
+            <h1>Model Guide</h1>
+            <p class="subtitle">Choose the right Whisper model for your transcription needs.</p>
 
-            <p>Access settings by right-clicking the MurmurTone icon in your system tray and selecting "Settings".</p>
+            <p>MurmurTone uses OpenAI's Whisper models for speech recognition. Each model offers different trade-offs between speed, accuracy, and resource usage. This guide helps you pick the best one for your workflow.</p>
 
-            <h2>General Settings</h2>
+            <div class="callout callout-info">
+                <strong>Quick Recommendation</strong>
+                For most users, we recommend the <code>Recommended</code> model. It offers the best balance of accuracy and speed, and works well on most modern computers.
+            </div>
 
-            <h3>Speech Model</h3>
-            <p>Choose the model that best fits your needs. <a href="/docs/model-guide.html">See the full Model Guide</a> for detailed comparisons.</p>
+            <h2>Model Comparison</h2>
 
             <div class="table-wrapper">
             <table class="settings-table">
                 <thead>
-                    <tr><th>Model</th><th>Speed</th><th>Accuracy</th><th>RAM Usage</th><th>Best For</th></tr>
+                    <tr>
+                        <th>Model</th>
+                        <th>Speed</th>
+                        <th>Accuracy</th>
+                        <th>RAM</th>
+                        <th>Best For</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    <tr><td><code>Quick</code></td><td>Fastest</td><td>Good</td><td>~1 GB</td><td>Quick notes, chat</td></tr>
-                    <tr><td><code>Standard</code></td><td>Fast</td><td>Better</td><td>~1.5 GB</td><td>Casual dictation</td></tr>
-                    <tr><td><code>Recommended</code></td><td>Moderate</td><td>Great</td><td>~2.5 GB</td><td>General work</td></tr>
-                    <tr><td><code>Professional</code></td><td>Slower</td><td>Excellent</td><td>~5 GB</td><td>Important documents</td></tr>
-                    <tr><td><code>Studio</code></td><td>Slowest</td><td>Best</td><td>~10 GB</td><td>Professional, accents</td></tr>
+                    <tr>
+                        <td><code>Quick</code></td>
+                        <td>Fastest</td>
+                        <td>Good</td>
+                        <td>~1 GB</td>
+                        <td>Quick notes, chat messages</td>
+                    </tr>
+                    <tr>
+                        <td><code>Standard</code></td>
+                        <td>Fast</td>
+                        <td>Better</td>
+                        <td>~1.5 GB</td>
+                        <td>Casual dictation, everyday use</td>
+                    </tr>
+                    <tr class="recommended">
+                        <td><code>Recommended</code></td>
+                        <td>Moderate</td>
+                        <td>Great</td>
+                        <td>~2.5 GB</td>
+                        <td>Documentation, emails, general work</td>
+                    </tr>
+                    <tr>
+                        <td><code>Professional</code></td>
+                        <td>Slower</td>
+                        <td>Excellent</td>
+                        <td>~5 GB</td>
+                        <td>Important documents, reports</td>
+                    </tr>
+                    <tr>
+                        <td><code>Studio</code></td>
+                        <td>Slowest</td>
+                        <td>Best</td>
+                        <td>~10 GB</td>
+                        <td>Professional transcription, accents</td>
+                    </tr>
                 </tbody>
             </table>
             </div>
 
-            <div class="callout callout-info">
-                <strong>Recommendation</strong>
-                Start with <code>Recommended</code> for the best balance of speed and accuracy. Use <code>Professional</code> or <code>Studio</code> if you need higher accuracy and have the RAM/VRAM.
+            <h2>Which Model Should I Use?</h2>
+
+            <div class="decision-card">
+                <h4>I need fast transcription for quick notes</h4>
+                <p>Use <code>Quick</code> or <code>Standard</code>. These models transcribe almost instantly and are perfect for casual use like chat messages, quick reminders, or informal notes where minor errors are acceptable.</p>
             </div>
 
-            <h3>Processing Mode</h3>
-            <p>Select how MurmurTone uses your hardware:</p>
+            <div class="decision-card">
+                <h4>I want the best balance of speed and accuracy</h4>
+                <p>Use <code>Recommended</code>. This is our recommended model for most users. It handles professional vocabulary well, runs efficiently on most computers, and produces accurate results for emails, documentation, and everyday work.</p>
+            </div>
 
+            <div class="decision-card">
+                <h4>I need high accuracy for important documents</h4>
+                <p>Use <code>Professional</code> or <code>Studio</code>. These models excel at complex vocabulary, technical terms, and proper nouns. Choose <code>Professional</code> if you have 8+ GB RAM, or <code>Studio</code> if you have a powerful GPU and need the absolute best accuracy.</p>
+            </div>
+
+            <div class="decision-card">
+                <h4>I work with accents or non-native English speakers</h4>
+                <p>Use <code>Studio</code>. Larger models handle accent variation significantly better. If <code>Studio</code> is too slow, <code>Professional</code> is a good compromise.</p>
+            </div>
+
+            <div class="decision-card">
+                <h4>I need to translate speech to English</h4>
+                <p>Use <code>Recommended</code> or larger. All models support translation from 90+ languages to English, but larger models produce more accurate translations. Set your Language to the source language (e.g., Spanish) and enable the Translation option in settings.</p>
+            </div>
+
+            <h2>Technical Specifications</h2>
+
+            <p>For power users, here are the detailed specifications of each model:</p>
+
+            <div class="table-wrapper">
             <table class="settings-table">
                 <thead>
-                    <tr><th>Mode</th><th>Description</th></tr>
+                    <tr>
+                        <th>Model</th>
+                        <th>Parameters</th>
+                        <th>Download Size</th>
+                        <th>WER*</th>
+                        <th>Languages</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    <tr><td><strong>Auto</strong></td><td>Automatically selects best option based on your hardware</td></tr>
-                    <tr><td><strong>CPU</strong></td><td>Uses only CPU (works on any machine)</td></tr>
-                    <tr><td><strong>GPU-Balanced</strong></td><td>Uses GPU with balanced settings (faster, requires NVIDIA GPU)</td></tr>
-                    <tr><td><strong>GPU-Quality</strong></td><td>Uses GPU with quality settings (fastest, requires NVIDIA GPU)</td></tr>
+                    <tr>
+                        <td><code>Quick</code></td>
+                        <td>39 M</td>
+                        <td>75 MB</td>
+                        <td>~10%</td>
+                        <td>99</td>
+                    </tr>
+                    <tr>
+                        <td><code>Standard</code></td>
+                        <td>74 M</td>
+                        <td>145 MB</td>
+                        <td>~7%</td>
+                        <td>99</td>
+                    </tr>
+                    <tr>
+                        <td><code>Recommended</code></td>
+                        <td>244 M</td>
+                        <td>484 MB</td>
+                        <td>~5%</td>
+                        <td>99</td>
+                    </tr>
+                    <tr>
+                        <td><code>Professional</code></td>
+                        <td>769 M</td>
+                        <td>1.5 GB</td>
+                        <td>~4%</td>
+                        <td>99</td>
+                    </tr>
+                    <tr>
+                        <td><code>Studio</code></td>
+                        <td>1.55 B</td>
+                        <td>3 GB</td>
+                        <td>~2.7%</td>
+                        <td>99</td>
+                    </tr>
                 </tbody>
             </table>
-
-            <h3>Language</h3>
-            <p>Choose your transcription language:</p>
-            <ul>
-                <li><strong>English (en)</strong> - Optimized for English only (faster, more accurate)</li>
-                <li><strong>Auto-detect</strong> - Automatically detects language from 18+ supported languages</li>
-                <li><strong>Specific language</strong> - Choose a specific language (Spanish, French, German, etc.)</li>
-            </ul>
-
-            <h3>Hotkey</h3>
-            <p>Set your push-to-talk hotkey:</p>
-            <ol>
-                <li>Click the "Set Hotkey" button</li>
-                <li>Press your desired key combination (e.g., <code>Ctrl+Shift+Space</code>)</li>
-                <li>The new hotkey is saved automatically</li>
-            </ol>
-
-            <div class="callout callout-warning">
-                <strong>Avoid conflicts</strong>
-                Choose a hotkey that isn't used by other applications. Avoid common shortcuts like <code>Ctrl+C</code> or <code>Alt+Tab</code>.
             </div>
 
-            <h2>Audio Settings</h2>
+            <p><small>*WER (Word Error Rate) measured on LibriSpeech clean test set. Lower is better. Real-world accuracy varies based on audio quality, background noise, and vocabulary.</small></p>
 
-            <h3>Input Device</h3>
-            <p>Select which microphone to use for recording. Options include:</p>
+            <h2>GPU Acceleration</h2>
+
+            <p>If you have an NVIDIA GPU with 4+ GB VRAM, MurmurTone can use it to dramatically speed up transcription:</p>
+
             <ul>
-                <li><strong>System Default</strong> - Uses your Windows default recording device</li>
-                <li><strong>Specific device</strong> - Choose a specific microphone from the dropdown</li>
+                <li><strong>Quick/Standard</strong>: 10-20x faster with GPU</li>
+                <li><strong>Recommended</strong>: 8-15x faster with GPU</li>
+                <li><strong>Professional</strong>: 6-10x faster with GPU (requires 6+ GB VRAM)</li>
+                <li><strong>Studio</strong>: 5-8x faster with GPU (requires 10+ GB VRAM)</li>
             </ul>
 
-            <h3>Noise Gate</h3>
-            <p>Filter out background noise:</p>
+            <p>Set your Processing Mode to "Auto" and MurmurTone will automatically use your GPU if available.</p>
+
+            <div class="callout callout-warning">
+                <strong>Running out of memory?</strong>
+                If MurmurTone crashes or becomes unresponsive, try a smaller model. The <code>Recommended</code> model works reliably on most systems with 8 GB RAM.
+            </div>
+
+            <h2>Downloading Models</h2>
+
+            <p>The <code>Quick</code> and <code>Standard</code> models are included with MurmurTone. Larger models are downloaded on-demand when you select them in Settings.</p>
+
+            <p>Download sizes:</p>
             <ul>
-                <li><strong>Enable/Disable</strong> - Toggle noise gate on or off</li>
-                <li><strong>Threshold</strong> - Set the dB level below which audio is ignored (-60 to -20 dB)</li>
-            </ul>
-            <p>Lower values (e.g., -50 dB) are more sensitive and let more sound through. Higher values (e.g., -30 dB) filter out more background noise but may cut off quiet speech.</p>
-
-            <h3>Audio Feedback</h3>
-            <p>Toggle individual sound effects:</p>
-            <ul>
-                <li><strong>Recording start</strong> - Beep when recording begins</li>
-                <li><strong>Processing</strong> - Sound while transcribing</li>
-                <li><strong>Success</strong> - Chime when transcription completes</li>
-                <li><strong>Error</strong> - Alert when something goes wrong</li>
-                <li><strong>Command</strong> - Sound when voice command is recognized</li>
-            </ul>
-
-            <h2>Advanced Features</h2>
-
-            <h3>Custom Vocabulary</h3>
-            <p>Add technical terms, names, and jargon to improve recognition:</p>
-            <ol>
-                <li>Go to the "Custom Vocabulary" tab</li>
-                <li>Enter words or phrases, one per line</li>
-                <li>Click "Save"</li>
-            </ol>
-            <p><strong>Examples:</strong> Company names, product names, technical acronyms, people's names.</p>
-
-            <h3>Custom Dictionary</h3>
-            <p>Create text replacement shortcuts:</p>
-            <ol>
-                <li>Go to the "Custom Dictionary" tab</li>
-                <li>Add trigger phrases and their replacements</li>
-                <li>Click "Save"</li>
-            </ol>
-            <p><strong>Example:</strong> "my email" → "yourname@company.com"</p>
-
-            <h3>Translation Mode</h3>
-            <p>Speak in one language, output in English:</p>
-            <ol>
-                <li>Enable "Translation Mode" in settings</li>
-                <li>Select your source language (or auto-detect)</li>
-                <li>Speak in your selected language</li>
-                <li>Transcription appears in English</li>
-            </ol>
-
-            <h3>AI Text Cleanup</h3>
-            <p>Automatically clean up transcriptions using local AI. Requires <a href="https://ollama.ai" target="_blank" rel="noopener">Ollama</a> installed separately. Enable in Settings → Advanced → AI Cleanup.</p>
-
-            <h2>Preview Window</h2>
-            <p>Show a floating preview of your transcription:</p>
-            <ul>
-                <li><strong>Enable/Disable</strong> - Toggle preview window</li>
-                <li><strong>Theme</strong> - Choose light or dark mode</li>
-                <li><strong>Position</strong> - Set where the preview appears on screen</li>
+                <li><code>Recommended</code>: ~484 MB</li>
+                <li><code>Professional</code>: ~1.5 GB</li>
+                <li><code>Studio</code>: ~3 GB</li>
             </ul>
 
-            <h2>Settings File Location</h2>
-            <p>Settings are stored at:</p>
-            <pre><code>%APPDATA%\MurmurTone\config.json</code></pre>
-            <p>You can back up or transfer this file to preserve your settings across installations.</p>
+            <p>Models are cached locally after download, so you only need to download once.</p>
 
             <div class="docs-footer">
-                <a href="/docs/voice-commands.html">← Voice Commands</a>
-                <a href="/docs/troubleshooting.html">Next: Troubleshooting →</a>
+                <a href="/docs/">← Introduction</a>
+                <a href="/docs/voice-commands.html">Next: Voice Commands →</a>
             </div>
         </main>
     </div>

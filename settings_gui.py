@@ -2152,18 +2152,45 @@ class SettingsWindow:
         self.sections["recognition"] = section
 
         # Whisper Model section (first section - no separator)
-        model = self._create_section_header(section, "Whisper Model", "Choose the speech recognition model")
+        model = self._create_section_header(section, "Whisper Model", "Recommended for most users")
 
-        self.model_var = ctk.StringVar(value=self.config.get("model_size", "tiny.en"))
+        # Model var stores internal name (tiny, base, etc.)
+        # Dropdown displays friendly names (Quick, Standard, etc.)
+        initial_model = self.config.get("model_size", "tiny")
+        self.model_var = ctk.StringVar(value=initial_model)
+
+        # Create display names list in same order as MODEL_OPTIONS
+        display_names = [config.MODEL_DISPLAY_NAMES.get(m, m) for m in config.MODEL_OPTIONS]
+        initial_display = config.MODEL_DISPLAY_NAMES.get(initial_model, initial_model)
+        self._model_display_var = ctk.StringVar(value=initial_display)
+
+        def on_model_display_changed(display_name):
+            # Convert display name back to internal name
+            internal_name = config.MODEL_INTERNAL_NAMES.get(display_name, display_name)
+            self.model_var.set(internal_name)
+            self._on_model_changed()
+
         self._create_labeled_dropdown(
             model,
             "Model Size",
-            values=config.MODEL_OPTIONS,
-            variable=self.model_var,
+            values=display_names,
+            variable=self._model_display_var,
             help_text="Larger models are more accurate but slower",
-            width=140,
-            command=self._on_model_changed,
+            width=160,
+            command=on_model_display_changed,
         )
+
+        # Learn more link (below help text)
+        learn_more_link = ctk.CTkLabel(
+            model,
+            text="Learn more about models",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=11),
+            text_color=PRIMARY,
+            cursor="hand2",
+            anchor="w",
+        )
+        learn_more_link.pack(fill="x", pady=(0, SPACE_SM))
+        learn_more_link.bind("<Button-1>", lambda e: webbrowser.open("https://murmurtone.com/docs/model-guide.html"))
 
         # Model status row
         self.model_status_frame = ctk.CTkFrame(model, fg_color="transparent")
@@ -3405,6 +3432,7 @@ class SettingsWindow:
 
         # Recognition tab
         self.model_var.set(defaults["model_size"])
+        self._model_display_var.set(config.MODEL_DISPLAY_NAMES.get(defaults["model_size"], defaults["model_size"]))
         self.silence_var.set(str(defaults["silence_duration_sec"]))
         self.processing_mode_var.set(config.PROCESSING_MODE_LABELS.get(defaults["processing_mode"], "Auto"))
         self.translation_enabled_var.set(defaults["translation_enabled"])

@@ -83,6 +83,18 @@ HELP_URL = "#"
 # Multilingual models (support transcription AND translation)
 MODEL_OPTIONS = ["tiny", "base", "small", "medium", "large-v3"]
 
+# Display names for models (shown in UI)
+MODEL_DISPLAY_NAMES = {
+    "tiny": "Quick",
+    "base": "Standard",
+    "small": "Recommended",
+    "medium": "Professional",
+    "large-v3": "Studio",
+}
+
+# Reverse lookup: display name -> internal name
+MODEL_INTERNAL_NAMES = {v: k for k, v in MODEL_DISPLAY_NAMES.items()}
+
 # Models bundled with installer vs available for download
 BUNDLED_MODELS = ["tiny", "base"]
 DOWNLOADABLE_MODELS = ["small", "medium", "large-v3"]
