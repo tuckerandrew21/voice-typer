@@ -228,6 +228,225 @@
 
         .cta-secondary:hover { border-color: var(--slate-400); }
 
+        /* Hero mockup */
+        .hero-mockup {
+            margin-top: 48px;
+            perspective: 1000px;
+        }
+
+        .mockup-window {
+            background: var(--slate-900);
+            border-radius: 12px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            border: 1px solid var(--slate-700);
+        }
+
+        .mockup-titlebar {
+            background: var(--slate-800);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--slate-700);
+        }
+
+        .mockup-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mockup-dots span {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--slate-600);
+        }
+
+        .mockup-dots span:first-child { background: #ef4444; }
+        .mockup-dots span:nth-child(2) { background: #eab308; }
+        .mockup-dots span:last-child { background: #22c55e; }
+
+        .mockup-title {
+            color: var(--slate-400);
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .mockup-content {
+            padding: 24px;
+        }
+
+        .mockup-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            color: var(--slate-400);
+            font-size: 0.9em;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--slate-600);
+        }
+
+        .status-indicator.recording {
+            background: #ef4444;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .mockup-transcript {
+            background: var(--slate-800);
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 60px;
+        }
+
+        .transcript-text {
+            color: var(--white);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .cursor {
+            animation: blink 1s step-end infinite;
+            color: var(--primary);
+        }
+
+        .mockup-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+        }
+
+        .hotkey-badge, .model-badge {
+            background: var(--slate-800);
+            color: var(--slate-400);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-family: monospace;
+        }
+
+        .hero-social-proof {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 24px;
+            color: var(--slate-400);
+            font-size: 0.9em;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 80px 0;
+            background: var(--white);
+        }
+
+        .how-it-works h2 {
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 8px;
+            color: var(--slate-800);
+        }
+
+        .how-subtitle {
+            text-align: center;
+            color: var(--slate-600);
+            margin-bottom: 48px;
+            font-size: 1.1em;
+        }
+
+        .steps {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            text-align: center;
+            max-width: 200px;
+            position: relative;
+        }
+
+        .step-number {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: var(--white);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 0.8em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--slate-100);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: var(--primary);
+        }
+
+        .step h3 {
+            font-size: 1.1em;
+            margin-bottom: 8px;
+            color: var(--slate-800);
+        }
+
+        .step p {
+            font-size: 0.9em;
+            color: var(--slate-600);
+            line-height: 1.5;
+        }
+
+        .step-arrow {
+            color: var(--slate-400);
+            padding-top: 28px;
+        }
+
+        .how-note {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--slate-500);
+            font-size: 0.95em;
+        }
+
+        @media (max-width: 768px) {
+            .step-arrow { display: none; }
+            .steps { gap: 32px; }
+        }
+
         /* Trust bar */
         .trust-bar {
             background: var(--slate-50);
@@ -274,9 +493,17 @@
 
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 32px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
             padding: 60px 0;
+        }
+
+        @media (max-width: 900px) {
+            .features { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            .features { grid-template-columns: 1fr; }
         }
 
         .feature {
@@ -353,6 +580,78 @@
 
         .checkmark { color: var(--primary); font-weight: bold; }
         .xmark { color: var(--slate-400); }
+
+        /* Testimonials */
+        .testimonials {
+            padding: 80px 0;
+            background: var(--white);
+        }
+
+        .testimonials h2 {
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 48px;
+            color: var(--slate-800);
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .testimonial-grid { grid-template-columns: 1fr; }
+        }
+
+        .testimonial {
+            background: var(--slate-50);
+            border: 1px solid var(--slate-200);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .testimonial-content p {
+            color: var(--slate-700);
+            font-size: 0.95em;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .author-avatar {
+            width: 44px;
+            height: 44px;
+            background: var(--primary);
+            color: var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .author-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .author-info strong {
+            color: var(--slate-800);
+            font-size: 0.95em;
+        }
+
+        .author-info span {
+            color: var(--slate-500);
+            font-size: 0.85em;
+        }
 
         /* FAQ */
         .faq { padding: 60px 0; }
@@ -436,7 +735,12 @@
     <nav class="nav-bar">
         <div class="nav-container">
             <a href="/" class="nav-logo">
-                <img src="/icon.png" alt="MurmurTone">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="32" height="32" rx="8" fill="#0d9488"/>
+                    <path d="M16 8a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0v-4a4 4 0 0 1 4-4z" fill="white"/>
+                    <path d="M10 15v1a6 6 0 0 0 12 0v-1" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M16 22v3m-3 0h6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
                 MurmurTone
             </a>
             <div class="nav-links">
@@ -474,6 +778,38 @@
             <p>Privacy-first speech recognition for Windows. No cloud uploads, no tracking, no compromises.</p>
             <a href="/install.html" class="cta-button">Start Free Trial</a>
             <a href="#features" class="cta-secondary">Learn More</a>
+
+            <!-- Product Mockup -->
+            <div class="hero-mockup">
+                <div class="mockup-window">
+                    <div class="mockup-titlebar">
+                        <div class="mockup-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span class="mockup-title">MurmurTone</span>
+                    </div>
+                    <div class="mockup-content">
+                        <div class="mockup-status">
+                            <div class="status-indicator recording"></div>
+                            <span>Listening...</span>
+                        </div>
+                        <div class="mockup-transcript">
+                            <p class="transcript-text">The quarterly report shows a 15% increase in revenue compared to last year<span class="cursor">|</span></p>
+                        </div>
+                        <div class="mockup-footer">
+                            <span class="hotkey-badge">Ctrl + Space</span>
+                            <span class="model-badge">whisper-large-v3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="hero-social-proof">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="none">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                Trusted by 500+ privacy-conscious professionals
+            </p>
         </div>
     </header>
 
@@ -510,6 +846,61 @@
         </div>
     </div>
 
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2>How It Works</h2>
+            <p class="how-subtitle">Three steps. No cloud. No complexity.</p>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                        </svg>
+                    </div>
+                    <h3>Press Hotkey</h3>
+                    <p>Hold to talk or toggle on/off. Your choice, fully customizable.</p>
+                </div>
+                <div class="step-arrow">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </div>
+                    <h3>Speak</h3>
+                    <p>Talk naturally. MurmurTone transcribes in real-time on your machine.</p>
+                </div>
+                <div class="step-arrow">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </div>
+                    <h3>Text Appears</h3>
+                    <p>Text is typed directly into any app. Word, Slack, browser, anywhere.</p>
+                </div>
+            </div>
+            <p class="how-note">No copy-paste needed. No app switching. Just speak and it's there.</p>
+        </div>
+    </section>
+
     <section class="hero">
         <div class="container">
             <h2>Enterprise-grade privacy, personal pricing</h2>
@@ -536,8 +927,8 @@
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                         </svg>
                     </div>
-                    <h3>Instant Results</h3>
-                    <p>Press hotkey, speak, release. Words appear in any application instantly—no waiting for servers.</p>
+                    <h3>Results in &lt;1 Second</h3>
+                    <p>Press hotkey, speak, release. Words appear in any application in under a second. No server round-trips.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">
@@ -557,6 +948,29 @@
                     </div>
                     <h3>AI Text Cleanup</h3>
                     <p>Local AI via Ollama fixes grammar and formatting. Still 100% offline, still private.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </div>
+                    <h3>Voice Commands</h3>
+                    <p>Say "new line", "period", or "select all" to control your text hands-free.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                    </div>
+                    <h3>18 Languages</h3>
+                    <p>English, Spanish, French, German, Japanese, and 13 more. All processed locally.</p>
                 </div>
             </div>
         </div>
@@ -601,6 +1015,51 @@
         </div>
     </section>
 
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="container">
+            <h2>What Users Are Saying</h2>
+            <div class="testimonial-grid">
+                <div class="testimonial">
+                    <div class="testimonial-content">
+                        <p>"Finally, voice typing I can trust with client data. The local processing means I don't have to worry about confidentiality."</p>
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">SK</div>
+                        <div class="author-info">
+                            <strong>Sarah K.</strong>
+                            <span>Attorney, Boston</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial">
+                    <div class="testimonial-content">
+                        <p>"I write 3x faster now. The AI cleanup catches my verbal tics and formats everything perfectly. No more editing 'um' out of transcripts."</p>
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">MR</div>
+                        <div class="author-info">
+                            <strong>Marcus R.</strong>
+                            <span>Technical Writer</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial">
+                    <div class="testimonial-content">
+                        <p>"Works offline on my laptop during flights. Wrote an entire report at 35,000 feet without any internet."</p>
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">JL</div>
+                        <div class="author-info">
+                            <strong>Jennifer L.</strong>
+                            <span>Consultant</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section class="faq" id="faq">
         <div class="container">
             <h2>Questions</h2>
@@ -610,7 +1069,7 @@
                         Is my voice data really private?
                     </div>
                     <div class="faq-answer">
-                        Yes. MurmurTone processes everything on your computer using local AI models. Your voice recordings and transcriptions never leave your machine—there's no server to send them to.
+                        Yes. MurmurTone processes everything on your computer using local AI models. Your voice recordings and transcriptions never leave your machine. There's no server to send them to.
                     </div>
                 </div>
                 <div class="faq-item">
