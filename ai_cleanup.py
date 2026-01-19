@@ -4,6 +4,45 @@ Provides grammar fixes and formality adjustments while staying 100% offline.
 """
 import requests
 from typing import Optional, List
+from urllib.parse import urlparse
+
+
+def validate_ollama_url(url: str) -> bool:
+    """
+    Validate Ollama URL is safe (localhost or private IP only).
+
+    This prevents SSRF attacks by restricting URLs to local/private networks.
+
+    Args:
+        url: URL to validate
+
+    Returns:
+        True if URL is safe to use, False otherwise
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = parsed.hostname or ""
+        # Allow localhost variants
+        if host in ("localhost", "127.0.0.1", "::1"):
+            return True
+        # Allow private IP ranges (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+        if host.startswith(("192.168.", "10.")):
+            return True
+        # Check 172.16.0.0 - 172.31.255.255 range
+        if host.startswith("172."):
+            parts = host.split(".")
+            if len(parts) >= 2:
+                try:
+                    second_octet = int(parts[1])
+                    if 16 <= second_octet <= 31:
+                        return True
+                except ValueError:
+                    pass
+        return False
+    except Exception:
+        return False
 
 
 def check_ollama_available(url: str = "http://localhost:11434") -> bool:
@@ -16,6 +55,10 @@ def check_ollama_available(url: str = "http://localhost:11434") -> bool:
     Returns:
         True if Ollama is reachable, False otherwise
     """
+    # Validate URL before making request (prevents SSRF)
+    if not validate_ollama_url(url):
+        return False
+
     try:
         response = requests.get(f"{url}/api/tags", timeout=2)
         return response.status_code == 200
@@ -33,6 +76,10 @@ def get_available_models(url: str = "http://localhost:11434") -> List[str]:
     Returns:
         List of model names, empty list if Ollama unavailable
     """
+    # Validate URL before making request (prevents SSRF)
+    if not validate_ollama_url(url):
+        return []
+
     try:
         response = requests.get(f"{url}/api/tags", timeout=2)
         if response.status_code == 200:
@@ -117,6 +164,10 @@ def cleanup_text(
         Cleaned up text, or None if cleanup failed
     """
     if not text or not text.strip():
+        return None
+
+    # Validate URL before making request (prevents SSRF)
+    if not validate_ollama_url(url):
         return None
 
     try:

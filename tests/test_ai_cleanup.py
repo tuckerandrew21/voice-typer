@@ -43,13 +43,14 @@ class TestOllamaConnection:
 
     @patch('ai_cleanup.requests.get')
     def test_check_ollama_available_with_custom_url(self, mock_get):
-        """Should use custom URL when provided."""
+        """Should use custom URL when provided (must be local/private IP)."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        ai_cleanup.check_ollama_available("http://custom:8080")
-        mock_get.assert_called_with("http://custom:8080/api/tags", timeout=2)
+        # Use a valid private IP instead of external URL
+        ai_cleanup.check_ollama_available("http://192.168.1.100:8080")
+        mock_get.assert_called_with("http://192.168.1.100:8080/api/tags", timeout=2)
 
 
 class TestGetAvailableModels:
@@ -209,16 +210,17 @@ class TestCleanupText:
 
     @patch('ai_cleanup.requests.post')
     def test_cleanup_text_with_custom_url(self, mock_post):
-        """Should use custom Ollama URL."""
+        """Should use custom Ollama URL (must be local/private IP)."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"response": "cleaned"}
         mock_post.return_value = mock_response
 
-        ai_cleanup.cleanup_text("test", url="http://custom:8080")
+        # Use a valid private IP instead of external URL
+        ai_cleanup.cleanup_text("test", url="http://192.168.1.100:8080")
 
         call_args = mock_post.call_args
-        assert "http://custom:8080/api/generate" in call_args[0]
+        assert "http://192.168.1.100:8080/api/generate" in call_args[0]
 
     @patch('ai_cleanup.requests.post')
     def test_cleanup_text_timeout_parameter(self, mock_post):
@@ -299,6 +301,86 @@ class TestTestOllamaConnection:
 
         assert success is False
         assert "did not respond correctly" in message
+
+
+class TestUrlValidation:
+    """Tests for URL validation security."""
+
+    def test_localhost_allowed(self):
+        """Localhost URLs should be allowed."""
+        assert ai_cleanup.validate_ollama_url("http://localhost:11434") is True
+        assert ai_cleanup.validate_ollama_url("https://localhost:11434") is True
+
+    def test_loopback_ip_allowed(self):
+        """127.0.0.1 should be allowed."""
+        assert ai_cleanup.validate_ollama_url("http://127.0.0.1:11434") is True
+
+    def test_ipv6_loopback_allowed(self):
+        """IPv6 loopback should be allowed."""
+        assert ai_cleanup.validate_ollama_url("http://[::1]:11434") is True
+
+    def test_private_ip_192_168_allowed(self):
+        """192.168.x.x addresses should be allowed."""
+        assert ai_cleanup.validate_ollama_url("http://192.168.1.100:11434") is True
+        assert ai_cleanup.validate_ollama_url("http://192.168.0.1:8080") is True
+
+    def test_private_ip_10_allowed(self):
+        """10.x.x.x addresses should be allowed."""
+        assert ai_cleanup.validate_ollama_url("http://10.0.0.1:11434") is True
+        assert ai_cleanup.validate_ollama_url("http://10.255.255.255:8080") is True
+
+    def test_private_ip_172_allowed(self):
+        """172.16-31.x.x addresses should be allowed."""
+        assert ai_cleanup.validate_ollama_url("http://172.16.0.1:11434") is True
+        assert ai_cleanup.validate_ollama_url("http://172.31.255.255:8080") is True
+
+    def test_private_ip_172_outside_range_rejected(self):
+        """172.x.x.x outside 16-31 range should be rejected."""
+        assert ai_cleanup.validate_ollama_url("http://172.15.0.1:11434") is False
+        assert ai_cleanup.validate_ollama_url("http://172.32.0.1:11434") is False
+
+    def test_public_urls_rejected(self):
+        """Public/external URLs should be rejected (SSRF prevention)."""
+        assert ai_cleanup.validate_ollama_url("http://evil.com:11434") is False
+        assert ai_cleanup.validate_ollama_url("http://google.com:80") is False
+        assert ai_cleanup.validate_ollama_url("http://8.8.8.8:11434") is False
+
+    def test_invalid_scheme_rejected(self):
+        """Non-HTTP schemes should be rejected."""
+        assert ai_cleanup.validate_ollama_url("ftp://localhost:11434") is False
+        assert ai_cleanup.validate_ollama_url("file:///etc/passwd") is False
+
+    def test_empty_url_rejected(self):
+        """Empty URLs should be rejected."""
+        assert ai_cleanup.validate_ollama_url("") is False
+        assert ai_cleanup.validate_ollama_url(None) is False
+
+    def test_malformed_url_rejected(self):
+        """Malformed URLs should be rejected."""
+        assert ai_cleanup.validate_ollama_url("not-a-url") is False
+        assert ai_cleanup.validate_ollama_url("://missing-scheme") is False
+
+    @patch('ai_cleanup.requests.get')
+    def test_check_ollama_rejects_external_url(self, mock_get):
+        """check_ollama_available should reject external URLs."""
+        # This should return False without making any request
+        result = ai_cleanup.check_ollama_available("http://evil.com:11434")
+        assert result is False
+        mock_get.assert_not_called()
+
+    @patch('ai_cleanup.requests.get')
+    def test_get_models_rejects_external_url(self, mock_get):
+        """get_available_models should reject external URLs."""
+        result = ai_cleanup.get_available_models("http://evil.com:11434")
+        assert result == []
+        mock_get.assert_not_called()
+
+    @patch('ai_cleanup.requests.post')
+    def test_cleanup_text_rejects_external_url(self, mock_post):
+        """cleanup_text should reject external URLs."""
+        result = ai_cleanup.cleanup_text("test", url="http://evil.com:11434")
+        assert result is None
+        mock_post.assert_not_called()
 
 
 class TestOfflineVerification:

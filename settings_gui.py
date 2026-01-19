@@ -18,6 +18,7 @@ from PIL import Image
 import config
 import settings_logic
 from theme import make_combobox_clickable
+from ai_cleanup import validate_ollama_url
 
 # =============================================================================
 # COLORS - Exact match to HTML mockup CSS variables
@@ -39,6 +40,7 @@ SLATE_100 = "#f1f5f9"      # Titles, bright text
 SUCCESS = "#10b981"
 WARNING = "#f59e0b"
 ERROR = "#ef4444"
+ERROR_DARK = "#dc2626"     # Darker red for hover states
 
 # Font family - Roboto Serif for softer, friendlier feel
 FONT_FAMILY = "Roboto Serif"
@@ -981,6 +983,10 @@ class SettingsWindow:
         self._status_label = None
         self._status_hide_id = None
 
+        # Lazy loading for About section
+        self._sys_info_label = None
+        self._sys_info_loaded = False
+
     def show(self):
         """Show the settings window."""
         self.window = ctk.CTk()
@@ -1043,6 +1049,9 @@ class SettingsWindow:
         self.window.lift()
         self.window.focus_force()
         self.window.after(200, lambda: self.window.attributes('-topmost', False))
+
+        # Setup keyboard navigation for accessibility
+        self._setup_keyboard_navigation()
 
         self.window.protocol("WM_DELETE_WINDOW", self.close)
         self.window.mainloop()
@@ -1200,6 +1209,10 @@ class SettingsWindow:
         }
         self.page_title.configure(text=titles.get(section_id, section_id.title()))
         self.current_section = section_id
+
+        # Lazy-load system info when About is first shown
+        if section_id == "about" and not self._sys_info_loaded:
+            self.window.after(10, self._populate_system_info)
 
     # =========================================================================
     # SECTION BUILDERS
@@ -2083,7 +2096,7 @@ class SettingsWindow:
             return
 
         self.noise_test_running = True
-        self.noise_test_btn.configure(text="Stop Test", fg_color=ERROR, hover_color="#dc2626")
+        self.noise_test_btn.configure(text="Stop Test", fg_color=ERROR, hover_color=ERROR_DARK)
 
         # Get selected device
         device_info = self.get_selected_device_info()
@@ -2979,6 +2992,11 @@ class SettingsWindow:
         try:
             import requests
             url = self.config.get("ollama_url", "http://localhost:11434")
+            # Validate URL before making request (prevents SSRF)
+            if not validate_ollama_url(url):
+                self.ollama_status_dot.configure(fg_color=ERROR)
+                self.ollama_status_text.configure(text="Invalid URL")
+                return
             response = requests.get(f"{url}/api/tags", timeout=2)
             if response.status_code == 200:
                 self.ollama_status_dot.configure(fg_color=SUCCESS)
@@ -3088,14 +3106,36 @@ class SettingsWindow:
             elif link_text == "Open Logs Folder":
                 link.bind("<Button-1>", lambda e: self._open_logs_folder())
 
-        # System Info section
+        # System Info section (lazy-loaded for faster startup)
         sys_info = self._create_section_header(section, "System Information", show_divider=True)
+
+        self._sys_info_label = ctk.CTkLabel(
+            sys_info,
+            text="Loading...",
+            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
+            text_color=SLATE_400,
+            anchor="w",
+            justify="left",
+        )
+        self._sys_info_label.pack(fill="x")
+
+    def _open_logs_folder(self):
+        """Open logs folder."""
+        logs_dir = os.path.join(os.path.dirname(__file__), "logs")
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
+        os.startfile(logs_dir)
+
+    def _populate_system_info(self):
+        """Populate system info label (called lazily when About tab is first shown)."""
+        if self._sys_info_loaded or not self._sys_info_label:
+            return
 
         info_text = []
         try:
             import sys
             info_text.append(f"Python: {sys.version.split()[0]}")
-        except:
+        except Exception:
             pass
 
         try:
@@ -3112,22 +3152,8 @@ class SettingsWindow:
         except ImportError:
             pass
 
-        info_label = ctk.CTkLabel(
-            sys_info,
-            text="\n".join(info_text),
-            font=ctk.CTkFont(family=FONT_FAMILY, size=12),
-            text_color=SLATE_400,
-            anchor="w",
-            justify="left",
-        )
-        info_label.pack(fill="x")
-
-    def _open_logs_folder(self):
-        """Open logs folder."""
-        logs_dir = os.path.join(os.path.dirname(__file__), "logs")
-        if not os.path.exists(logs_dir):
-            os.makedirs(logs_dir)
-        os.startfile(logs_dir)
+        self._sys_info_label.configure(text="\n".join(info_text))
+        self._sys_info_loaded = True
 
     # =========================================================================
     # AUTOSAVE
@@ -3455,6 +3481,14 @@ class SettingsWindow:
         self.ai_mode_var.set(defaults["ai_cleanup_mode"])
         self.ai_formality_var.set(defaults["ai_formality_level"])
         self.ai_model_var.set(defaults["ollama_model"])
+
+    def _setup_keyboard_navigation(self):
+        """Setup keyboard navigation for accessibility."""
+        # Escape key closes window
+        self.window.bind("<Escape>", lambda e: self.close())
+
+        # Tab navigation is automatic in CTk widgets
+        # Additional keyboard shortcuts can be added here as needed
 
     def close(self):
         """Close the settings window."""

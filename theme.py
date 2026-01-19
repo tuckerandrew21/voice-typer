@@ -35,6 +35,7 @@ SLATE_100 = "#f1f5f9"      # Bright text, titles
 SUCCESS = "#10b981"        # Emerald green - OK states, recording active
 WARNING = "#f59e0b"        # Amber - warnings, caution
 ERROR = "#ef4444"          # Red - errors, critical
+ERROR_DARK = "#dc2626"     # Darker red - error hover states
 
 # =============================================================================
 # CustomTkinter Color Mapping

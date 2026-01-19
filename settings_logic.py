@@ -196,6 +196,65 @@ def validate_noise_threshold(value, default=-40, min_val=-60, max_val=-20):
         return default
 
 
+def validate_url(url: str, default: str = "") -> str:
+    """Validate URL format and length.
+
+    Args:
+        url: URL string to validate
+        default: Default value if invalid
+
+    Returns:
+        str: Valid URL or default
+    """
+    if not url or not isinstance(url, str):
+        return default
+    if len(url) > 500:  # Reasonable max length
+        return default
+    if not url.startswith(("http://", "https://")):
+        return default
+    return url
+
+
+def validate_text_input(value: str, max_length: int = 1000, default: str = "") -> str:
+    """Validate and truncate text input.
+
+    Args:
+        value: Text input to validate
+        max_length: Maximum allowed length
+        default: Default value if invalid type
+
+    Returns:
+        str: Valid (possibly truncated) text
+    """
+    if not isinstance(value, str):
+        return default
+    return value[:max_length]
+
+
+def validate_vocabulary_list(
+    items: list,
+    max_items: int = 500,
+    max_item_length: int = 200
+) -> list:
+    """Validate vocabulary list size and item lengths.
+
+    Args:
+        items: List of vocabulary items
+        max_items: Maximum number of items allowed
+        max_item_length: Maximum length per item
+
+    Returns:
+        list: Validated list with truncated/filtered items
+    """
+    if not isinstance(items, list):
+        return []
+    result = []
+    for item in items[:max_items]:
+        if isinstance(item, str) and len(item) <= max_item_length:
+            result.append(item)
+    return result
+
+
 # =============================================================================
 # Language Code/Label Conversion
 # =============================================================================

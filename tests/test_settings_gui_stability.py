@@ -492,3 +492,109 @@ class TestModelSelection:
         assert "small" in config.DOWNLOADABLE_MODELS
         assert "medium" in config.DOWNLOADABLE_MODELS
         assert "large-v3" in config.DOWNLOADABLE_MODELS
+
+
+# =============================================================================
+# Input Validation Tests (Security)
+# =============================================================================
+
+class TestInputValidators:
+    """Tests for input validation functions in settings_logic."""
+
+    def test_validate_url_valid(self):
+        """Valid URLs should be returned as-is."""
+        import settings_logic
+
+        assert settings_logic.validate_url("http://localhost:11434") == "http://localhost:11434"
+        assert settings_logic.validate_url("https://example.com/api") == "https://example.com/api"
+
+    def test_validate_url_invalid_scheme(self):
+        """URLs without http/https should return default."""
+        import settings_logic
+
+        assert settings_logic.validate_url("ftp://localhost") == ""
+        assert settings_logic.validate_url("file:///etc/passwd") == ""
+        assert settings_logic.validate_url("javascript:alert(1)") == ""
+
+    def test_validate_url_too_long(self):
+        """URLs over 500 chars should return default."""
+        import settings_logic
+
+        long_url = "http://localhost/" + "a" * 500
+        assert settings_logic.validate_url(long_url) == ""
+
+    def test_validate_url_empty(self):
+        """Empty or None URLs should return default."""
+        import settings_logic
+
+        assert settings_logic.validate_url("") == ""
+        assert settings_logic.validate_url(None) == ""
+
+    def test_validate_url_custom_default(self):
+        """Should use custom default when provided."""
+        import settings_logic
+
+        assert settings_logic.validate_url("", default="http://fallback") == "http://fallback"
+
+    def test_validate_text_input_valid(self):
+        """Valid text should be returned."""
+        import settings_logic
+
+        assert settings_logic.validate_text_input("hello") == "hello"
+        assert settings_logic.validate_text_input("unicode: café") == "unicode: café"
+
+    def test_validate_text_input_truncation(self):
+        """Long text should be truncated to max_length."""
+        import settings_logic
+
+        long_text = "a" * 2000
+        result = settings_logic.validate_text_input(long_text, max_length=100)
+        assert len(result) == 100
+
+    def test_validate_text_input_invalid_type(self):
+        """Non-string input should return default."""
+        import settings_logic
+
+        assert settings_logic.validate_text_input(12345) == ""
+        assert settings_logic.validate_text_input(None) == ""
+        assert settings_logic.validate_text_input(["list"]) == ""
+
+    def test_validate_vocabulary_list_valid(self):
+        """Valid lists should be returned."""
+        import settings_logic
+
+        items = ["word1", "word2", "word3"]
+        result = settings_logic.validate_vocabulary_list(items)
+        assert result == items
+
+    def test_validate_vocabulary_list_max_items(self):
+        """Lists over max_items should be truncated."""
+        import settings_logic
+
+        items = [f"word{i}" for i in range(1000)]
+        result = settings_logic.validate_vocabulary_list(items, max_items=10)
+        assert len(result) == 10
+
+    def test_validate_vocabulary_list_max_item_length(self):
+        """Items over max_item_length should be filtered out."""
+        import settings_logic
+
+        items = ["short", "a" * 300, "medium"]
+        result = settings_logic.validate_vocabulary_list(items, max_item_length=50)
+        assert result == ["short", "medium"]
+
+    def test_validate_vocabulary_list_invalid_type(self):
+        """Non-list input should return empty list."""
+        import settings_logic
+
+        assert settings_logic.validate_vocabulary_list("not a list") == []
+        assert settings_logic.validate_vocabulary_list(None) == []
+        assert settings_logic.validate_vocabulary_list(123) == []
+
+    def test_validate_vocabulary_list_filters_non_strings(self):
+        """Non-string items should be filtered out."""
+        import settings_logic
+
+        items = ["valid", 123, None, "also valid", ["nested"]]
+        result = settings_logic.validate_vocabulary_list(items)
+        assert result == ["valid", "also valid"]

@@ -5,6 +5,7 @@ Handles loading/saving settings to JSON file.
 import json
 import os
 import sounddevice as sd
+import dpapi
 
 # App info
 APP_NAME = "MurmurTone"
@@ -70,6 +71,10 @@ DEFAULTS = {
     "ai_cleanup_mode": "grammar",  # grammar, formality, or both
     "ai_formality_level": "professional",  # casual, professional, or formal
     # License and trial system
+    # SECURITY: License key is encrypted using Windows DPAPI before storage.
+    # DPAPI uses the current Windows user's credentials, so only that user can decrypt.
+    # On non-Windows platforms, falls back to base64 encoding (less secure).
+    # See dpapi.py for implementation details.
     "license_key": "",  # LemonSqueezy license key (empty = trial mode)
     "license_status": "trial",  # trial, active, expired
     "trial_started_date": None,  # ISO format timestamp when trial started
@@ -235,7 +240,24 @@ def load_config():
                     hotkey.update(saved["hotkey"])
                     config["hotkey"] = hotkey
                 # Migrate old GPU settings if present
-                if migrate_gpu_settings(config):
+                needs_save = migrate_gpu_settings(config)
+
+                # Decrypt license key if encrypted version exists
+                encrypted_key = config.get("license_key_encrypted", "")
+                plain_key = config.get("license_key", "")
+
+                if encrypted_key:
+                    # Decrypt the stored encrypted key
+                    decrypted = dpapi.decrypt(encrypted_key)
+                    if decrypted:
+                        config["license_key"] = decrypted
+                    # Remove encrypted key from in-memory config
+                    config.pop("license_key_encrypted", None)
+                elif plain_key:
+                    # Migration: plain text key exists, will be encrypted on next save
+                    needs_save = True
+
+                if needs_save:
                     save_config(config)  # Persist migration
                 return config
         except (json.JSONDecodeError, IOError):
@@ -246,8 +268,20 @@ def load_config():
 def save_config(config):
     """Save settings to JSON file."""
     config_path = get_config_path()
+
+    # Create a copy to avoid modifying the original
+    config_to_save = config.copy()
+
+    # Encrypt license key if present
+    license_key = config_to_save.get("license_key", "")
+    if license_key:
+        encrypted = dpapi.encrypt(license_key)
+        if encrypted:
+            config_to_save["license_key_encrypted"] = encrypted
+            config_to_save["license_key"] = ""  # Don't store plain text
+
     with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
+        json.dump(config_to_save, f, indent=2)
 
 
 def hotkey_to_string(hotkey):

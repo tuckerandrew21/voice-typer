@@ -1395,9 +1395,11 @@ def on_transcribe_file(icon, item=None):
                 if sys.platform == "win32":
                     os.startfile(saved_path)
                 elif sys.platform == "darwin":
-                    os.system(f"open '{saved_path}'")
+                    # Use subprocess.run with list args to prevent command injection
+                    subprocess.run(["open", saved_path], check=False)
                 else:
-                    os.system(f"xdg-open '{saved_path}'")
+                    # Use subprocess.run with list args to prevent command injection
+                    subprocess.run(["xdg-open", saved_path], check=False)
             except Exception:
                 pass  # Silently fail if can't open
 
