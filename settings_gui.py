@@ -1635,7 +1635,7 @@ class SettingsWindow:
             fg_color=color,
         )
         dot.pack_propagate(False)  # Maintain exact size
-        dot.pack(side="left")
+        dot.pack(side="left", padx=(0, SPACE_XS))  # Add space after dot
         return dot
 
     def _create_meter_gradient(self, width, height):

@@ -75,12 +75,24 @@ def get_cuda_status():
         if torch.cuda.is_available():
             gpu_name = torch.cuda.get_device_name(0)
             return (True, "CUDA Available", gpu_name)
-        else:
-            # ctranslate2 supports CUDA but torch doesn't see a GPU
-            return (True, "CUDA Available", "via ctranslate2")
     except ImportError:
-        # No torch, but ctranslate2 says CUDA works
-        return (True, "CUDA Available", "via ctranslate2")
+        pass
+
+    # Fallback: try nvidia-smi to get GPU name
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            gpu_name = result.stdout.strip().split('\n')[0]  # First GPU
+            return (True, "CUDA Available", gpu_name)
+    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+        pass
+
+    # Last resort: ctranslate2 works but can't get GPU name
+    return (True, "CUDA Available", "via ctranslate2")
 
 
 # =============================================================================
