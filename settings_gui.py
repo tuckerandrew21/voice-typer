@@ -1205,13 +1205,18 @@ class SettingsWindow:
     # SECTION BUILDERS
     # =========================================================================
 
-    def _create_section_header(self, parent, title, description=None):
+    def _create_section_header(self, parent, title, description=None, show_divider=False):
         """Create a section header matching mockup exactly.
 
         Returns a frame for adding controls to.
         """
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(fill="x", pady=(0, SPACE_MD))
+
+        # Optional divider line above section
+        if show_divider:
+            divider = ctk.CTkFrame(container, fg_color=SLATE_700, height=2, corner_radius=0)
+            divider.pack(fill="x", pady=(SPACE_XS, SPACE_XL))
 
         # Section header - 14px semibold, SLATE_200
         if title:
@@ -1237,7 +1242,7 @@ class SettingsWindow:
 
         # Content frame with proper spacing
         content = ctk.CTkFrame(container, fg_color="transparent")
-        content.pack(fill="x", pady=(SPACE_SM, 0))
+        content.pack(fill="x", pady=(SPACE_SM, SPACE_SM))
 
         return content
 
@@ -1706,7 +1711,7 @@ class SettingsWindow:
         )
 
         # Output section
-        output = self._create_section_header(section, "Output", "Control what happens with transcribed text")
+        output = self._create_section_header(section, "Output", "Control what happens with transcribed text", show_divider=True)
 
         # Auto-paste toggle
         self.autopaste_var = ctk.BooleanVar(value=self.config.get("auto_paste", True))
@@ -1733,7 +1738,7 @@ class SettingsWindow:
         self._update_paste_help_text()
 
         # Preview Window section
-        preview = self._create_section_header(section, "Preview Window", "Floating overlay showing transcription progress")
+        preview = self._create_section_header(section, "Preview Window", "Floating overlay showing transcription progress", show_divider=True)
 
         # Show preview toggle
         self.preview_enabled_var = ctk.BooleanVar(value=self.config.get("preview_enabled", True))
@@ -1780,7 +1785,7 @@ class SettingsWindow:
         self.preview_font_size_var = ctk.IntVar(value=self.config.get("preview_font_size", 11))
 
         # Startup section
-        startup = self._create_section_header(section, "Startup")
+        startup = self._create_section_header(section, "Startup", show_divider=True)
 
         self.startup_var = ctk.BooleanVar(value=self.config.get("start_with_windows", False))
         self._create_toggle_setting(
@@ -1868,7 +1873,7 @@ class SettingsWindow:
         )
 
         # Noise Gate section
-        gate = self._create_section_header(section, "Noise Gate", "Filter out background noise below a threshold")
+        gate = self._create_section_header(section, "Noise Gate", "Filter out background noise below a threshold", show_divider=True)
 
         self.noise_gate_var = ctk.BooleanVar(value=self.config.get("noise_gate_enabled", False))
         self._create_toggle_setting(
@@ -1952,10 +1957,10 @@ class SettingsWindow:
 
         # Test button
         self.noise_test_btn = self._create_button(gate, "Test Microphone", self.toggle_noise_test, width=140)
-        self.noise_test_btn.pack(anchor="w")
+        self.noise_test_btn.pack(anchor="w", pady=(0, SPACE_SM))
 
         # Audio Feedback section
-        feedback = self._create_section_header(section, "Audio Feedback", "Sound notifications for recording events")
+        feedback = self._create_section_header(section, "Audio Feedback", "Sound notifications for recording events", show_divider=True)
 
         self.feedback_var = ctk.BooleanVar(value=self.config.get("audio_feedback", True))
         self._create_toggle_setting(
@@ -2248,7 +2253,7 @@ class SettingsWindow:
         )
 
         # GPU Acceleration section
-        gpu = self._create_section_header(section, "GPU Acceleration", "Use NVIDIA graphics card for faster processing")
+        gpu = self._create_section_header(section, "GPU Acceleration", "Use NVIDIA graphics card for faster processing", show_divider=True)
 
         # GPU status
         self.gpu_status_frame = ctk.CTkFrame(gpu, fg_color="transparent")
@@ -2314,7 +2319,7 @@ class SettingsWindow:
         self.window.after(100, self.refresh_gpu_status)
 
         # Translation section
-        trans = self._create_section_header(section, "Translation", "Translate spoken audio to English")
+        trans = self._create_section_header(section, "Translation", "Translate spoken audio to English", show_divider=True)
 
         self.translation_enabled_var = ctk.BooleanVar(value=self.config.get("translation_enabled", False))
         self._create_toggle_setting(
@@ -2817,7 +2822,7 @@ class SettingsWindow:
         )
 
         # Filler Word Removal section
-        filler = self._create_section_header(section, "Filler Word Removal", "Clean up hesitation sounds from transcriptions")
+        filler = self._create_section_header(section, "Filler Word Removal", "Clean up hesitation sounds from transcriptions", show_divider=True)
 
         self.filler_var = ctk.BooleanVar(value=self.config.get("filler_removal_enabled", False))
         self._create_toggle_setting(
@@ -2836,10 +2841,10 @@ class SettingsWindow:
         )
 
         # Custom Dictionary section
-        dictionary = self._create_section_header(section, "Custom Dictionary", "Add word replacements and custom vocabulary")
+        dictionary = self._create_section_header(section, "Custom Dictionary", "Add word replacements and custom vocabulary", show_divider=True)
 
         dict_row = ctk.CTkFrame(dictionary, fg_color="transparent")
-        dict_row.pack(fill="x")
+        dict_row.pack(fill="x", pady=(0, SPACE_SM))
 
         dict_btn = self._create_button(dict_row, "Edit Dictionary", self._edit_dictionary, width=140)
         dict_btn.pack(side="left")
@@ -2848,10 +2853,10 @@ class SettingsWindow:
         vocab_btn.pack(side="left", padx=(SPACE_SM, 0))
 
         # Text Shortcuts section
-        shortcuts = self._create_section_header(section, "Text Shortcuts", "Trigger phrases that expand to text blocks")
+        shortcuts = self._create_section_header(section, "Text Shortcuts", "Trigger phrases that expand to text blocks", show_divider=True)
 
         shortcuts_btn = self._create_button(shortcuts, "Edit Shortcuts", self._edit_shortcuts, width=140)
-        shortcuts_btn.pack(anchor="w")
+        shortcuts_btn.pack(anchor="w", pady=(0, SPACE_SM))
 
     def _edit_dictionary(self):
         """Open dictionary editor."""
@@ -2947,16 +2952,17 @@ class SettingsWindow:
         )
 
         # Transcription History section
-        history = self._create_section_header(section, "Transcription History", "Recent transcriptions stored for review")
+        history = self._create_section_header(section, "Transcription History", "Recent transcriptions stored for review", show_divider=True)
 
         history_btn = self._create_button(history, "View History", self._view_history, width=120)
-        history_btn.pack(anchor="w")
+        history_btn.pack(anchor="w", pady=(0, SPACE_SM))
 
         # Reset Settings section
         reset_section = self._create_section_header(
             section,
             "Reset Settings",
-            "Restore all settings to factory defaults"
+            "Restore all settings to factory defaults",
+            show_divider=True
         )
 
         reset_btn = self._create_button(
@@ -2966,7 +2972,7 @@ class SettingsWindow:
             style="secondary",
             width=140
         )
-        reset_btn.pack(anchor="w")
+        reset_btn.pack(anchor="w", pady=(0, SPACE_SM))
 
     def _check_ollama(self):
         """Check Ollama connection."""
@@ -3083,7 +3089,7 @@ class SettingsWindow:
                 link.bind("<Button-1>", lambda e: self._open_logs_folder())
 
         # System Info section
-        sys_info = self._create_section_header(section, "System Information")
+        sys_info = self._create_section_header(section, "System Information", show_divider=True)
 
         info_text = []
         try:
